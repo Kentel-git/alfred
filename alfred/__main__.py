@@ -7,6 +7,7 @@ USO = """Uso: alfred <comando>
   core      avvia il servizio (di solito lo fa systemd)
   finestra  apre la finestra di Alfred
   toggle    mostra o nasconde la finestra (per la scorciatoia)
+  mcp       server MCP con gli strumenti (lo avvia il cervello)
 """
 
 
@@ -24,6 +25,10 @@ def main() -> None:
         from alfred.finestra import toggle
 
         toggle()
+    elif comando == "mcp":
+        from alfred.mcp_server import avvia
+
+        avvia()
     else:
         print(USO, end="")
         sys.exit(0 if comando in ("-h", "--help", "aiuto") else 2)

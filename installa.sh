@@ -43,6 +43,10 @@ if [ ! -f "$CONFIG/alfred/config.toml" ]; then
     cp "$DIR/config.example.toml" "$CONFIG/alfred/config.toml"
     dire "Configurazione creata: $CONFIG/alfred/config.toml"
 fi
+if [ ! -f "$CONFIG/alfred/su-di-me.md" ]; then
+    cp "$DIR/su-di-me.example.md" "$CONFIG/alfred/su-di-me.md"
+    dire "Scheda personale da completare: $CONFIG/alfred/su-di-me.md"
+fi
 if [ ! -f "$CONFIG/alfred/secrets.env" ]; then
     install -m 600 /dev/null "$CONFIG/alfred/secrets.env"
 fi

@@ -13,7 +13,7 @@ Ogni fase produce qualcosa di usabile da sola.
 
 ## Fase 1 — Alfred pensa (chat testuale)
 - [ ] adattatore brain `claude -p` in streaming
-- [ ] personalità: prompt di sistema del maggiordomo
+- [x] personalità a strati (docs/ISPIRAZIONI.md) e scheda personale `su-di-me.md`
 - [ ] server MCP con i primi strumenti in sola lettura (stato OBS, ora, sistema)
 - [ ] memoria della conversazione
 

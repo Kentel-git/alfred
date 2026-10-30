@@ -7,6 +7,7 @@ Ogni fase produce qualcosa di usabile da sola.
 - [x] alfred-window: finestra GTK/WebKit, `alfred toggle`
 - [x] regola niri + scorciatoia (Mod+A) tramite `installa.sh`
 - [x] HUD: ora/data, sistema (CPU, RAM, temperature, batteria), meteo (Open-Meteo)
+- [x] aggiornamento dal vivo: dati spinti via WebSocket, HUD che si aggiorna da solo quando cambiano grafica, config o codice
 - [ ] meteo: impostare la città sulla macchina di Pietro
 - [x] config.toml + secrets.env, `installa.sh` per altre macchine
 

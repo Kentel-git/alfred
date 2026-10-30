@@ -150,3 +150,7 @@ main {
 }
 
 footer { text-align: center; font-size: 0.8rem; }
+
+/* Collegamento col servizio perso: l'HUD si attenua finché non torna. */
+body.scollegato main { opacity: 0.35; transition: opacity 0.4s; }
+body.scollegato .battuta::after { content: " (un attimo: ho perso il filo.)"; }

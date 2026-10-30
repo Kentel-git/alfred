@@ -24,6 +24,10 @@ _cache: dict = {"quando": 0.0, "dati": None}
 _coordinate: dict[str, tuple[float, float, str]] = {}
 
 
+def svuota_cache() -> None:
+    _cache.update(quando=0.0, dati=None)
+
+
 async def _trova_coordinate(client: httpx.AsyncClient, citta: str) -> tuple[float, float, str]:
     if citta not in _coordinate:
         risposta = await client.get(

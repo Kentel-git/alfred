@@ -51,70 +51,126 @@ function aggiornaOrologio() {
 
 const formatoVelocita = (kbs) => (kbs >= 1024 ? `${(kbs / 1024).toFixed(1)} MB/s` : `${kbs} KB/s`);
 
-async function aggiornaSistema() {
-  try {
-    const s = await (await fetch("/api/sistema")).json();
-    $("cpu-uso").textContent = `${Math.round(s.cpu.uso)}%` + (s.cpu.frequenza_mhz ? ` · ${(s.cpu.frequenza_mhz / 1000).toFixed(1)} GHz` : "");
-    $("cpu-barra").style.width = `${s.cpu.uso}%`;
-    $("cpu-temp").textContent = s.cpu.temperatura != null ? `${Math.round(s.cpu.temperatura)} °C` : "—";
-    $("gpu-freq").textContent = s.gpu.frequenza_mhz == null ? "—" : s.gpu.frequenza_mhz === 0 ? "a riposo" : `${s.gpu.frequenza_mhz} MHz`;
-    $("ram-uso").textContent = `${s.memoria.usata_gb} / ${s.memoria.totale_gb} GB`;
-    $("ram-barra").style.width = `${s.memoria.uso}%`;
-    $("disco").textContent = `${s.disco.libero_gb} GB liberi`;
-    $("batteria").textContent = s.batteria
-      ? `${s.batteria.livello}%${s.batteria.in_carica ? " · in carica" : ""}`
-      : "a rete";
-    $("rete").textContent = `↓ ${formatoVelocita(s.rete.giu_kbs)} · ↑ ${formatoVelocita(s.rete.su_kbs)}`;
-  } catch {
-    $("cpu-uso").textContent = "il servizio non risponde";
+function mostraSistema(s) {
+  $("cpu-uso").textContent = `${Math.round(s.cpu.uso)}%` + (s.cpu.frequenza_mhz ? ` · ${(s.cpu.frequenza_mhz / 1000).toFixed(1)} GHz` : "");
+  $("cpu-barra").style.width = `${s.cpu.uso}%`;
+  $("cpu-temp").textContent = s.cpu.temperatura != null ? `${Math.round(s.cpu.temperatura)} °C` : "—";
+  $("gpu-freq").textContent = s.gpu.frequenza_mhz == null ? "—" : s.gpu.frequenza_mhz === 0 ? "a riposo" : `${s.gpu.frequenza_mhz} MHz`;
+  $("ram-uso").textContent = `${s.memoria.usata_gb} / ${s.memoria.totale_gb} GB`;
+  $("ram-barra").style.width = `${s.memoria.uso}%`;
+  $("disco").textContent = `${s.disco.libero_gb} GB liberi`;
+  $("batteria").textContent = s.batteria
+    ? `${s.batteria.livello}%${s.batteria.in_carica ? " · in carica" : ""}`
+    : "a rete";
+  $("rete").textContent = `↓ ${formatoVelocita(s.rete.giu_kbs)} · ↑ ${formatoVelocita(s.rete.su_kbs)}`;
+}
+
+function mostraMeteo(messaggio) {
+  const m = messaggio.dati;
+  if (messaggio.errore) {
+    $("riquadro-meteo").hidden = false;
+    $("meteo-temp").textContent = "";
+    $("meteo-desc").textContent = "non riesco a guardare fuori dalla finestra";
+    $("meteo-dettagli").textContent = messaggio.errore;
+    $("meteo-giorni").replaceChildren();
+    return;
+  }
+  $("riquadro-meteo").hidden = !m;
+  if (!m) return;
+  $("meteo-temp").textContent = `${m.temperatura}°`;
+  $("meteo-desc").textContent = m.descrizione;
+  $("meteo-dettagli").textContent = `${m.luogo} · percepiti ${m.percepita}° · umidità ${m.umidita}% · vento ${m.vento_kmh} km/h`;
+  $("meteo-giorni").replaceChildren(
+    ...m.prossimi_giorni.map((g, i) => {
+      const li = document.createElement("li");
+      const nome = i === 0 ? "oggi" : new Date(g.data).toLocaleDateString("it-IT", { weekday: "long" });
+      li.innerHTML = `<span></span><span class="tenue"></span><span></span>`;
+      li.children[0].textContent = nome;
+      li.children[1].textContent = g.descrizione + (g.pioggia ? ` · ${g.pioggia}%` : "");
+      li.children[2].textContent = `${g.min}° / ${g.max}°`;
+      return li;
+    }),
+  );
+}
+
+// Ricarica i fogli di stile senza ricaricare la pagina.
+function aggiornaStile() {
+  for (const link of document.querySelectorAll('link[rel="stylesheet"]')) {
+    const url = new URL(link.href);
+    url.searchParams.set("v", Date.now());
+    link.href = url.toString();
   }
 }
 
-async function aggiornaMeteo() {
-  try {
-    const risposta = await fetch("/api/meteo");
-    const m = await risposta.json();
-    if (!risposta.ok || !m) {
-      $("riquadro-meteo").hidden = !m;
-      if (m && m.errore) $("meteo-desc").textContent = "non riesco a guardare fuori dalla finestra";
-      return;
+// --- Collegamento col servizio ----------------------------------------------
+// Un solo WebSocket: il servizio spinge i dati e avvisa quando qualcosa cambia.
+// Se cade, si ricollega da solo; se il servizio è stato riavviato con codice
+// nuovo, la pagina si ricarica.
+
+let canale = null;
+let avvioVisto = null;
+let attesa = 500;
+
+function collega() {
+  canale = new WebSocket(`ws://${location.host}/ws`);
+
+  canale.onopen = () => {
+    attesa = 500;
+    document.body.classList.remove("scollegato");
+  };
+
+  canale.onmessage = (evento) => {
+    const m = JSON.parse(evento.data);
+    switch (m.tipo) {
+      case "benvenuto":
+        if (avvioVisto && avvioVisto !== m.avvio) location.reload();
+        avvioVisto = m.avvio;
+        appellativo = m.dati.appellativo || appellativo;
+        aggiornaSaluto();
+        break;
+      case "stato":
+        appellativo = m.dati.appellativo || appellativo;
+        aggiornaSaluto();
+        break;
+      case "sistema":
+        mostraSistema(m.dati);
+        break;
+      case "meteo":
+        mostraMeteo(m);
+        break;
+      case "aggiorna":
+        if (m.solo_stile) aggiornaStile();
+        else location.reload();
+        break;
     }
-    $("riquadro-meteo").hidden = false;
-    $("meteo-temp").textContent = `${m.temperatura}°`;
-    $("meteo-desc").textContent = m.descrizione;
-    $("meteo-dettagli").textContent = `${m.luogo} · percepiti ${m.percepita}° · umidità ${m.umidita}% · vento ${m.vento_kmh} km/h`;
-    $("meteo-giorni").replaceChildren(
-      ...m.prossimi_giorni.map((g, i) => {
-        const li = document.createElement("li");
-        const nome = i === 0 ? "oggi" : new Date(g.data).toLocaleDateString("it-IT", { weekday: "long" });
-        li.innerHTML = `<span></span><span class="tenue"></span><span></span>`;
-        li.children[0].textContent = nome;
-        li.children[1].textContent = g.descrizione + (g.pioggia ? ` · ${g.pioggia}%` : "");
-        li.children[2].textContent = `${g.min}° / ${g.max}°`;
-        return li;
-      }),
-    );
-  } catch {
-    /* riproveremo al prossimo giro */
-  }
+  };
+
+  canale.onclose = () => {
+    document.body.classList.add("scollegato");
+    setTimeout(collega, attesa);
+    attesa = Math.min(attesa * 2, 5000);
+  };
 }
 
 // Chiamata dalla finestra ogni volta che Alfred viene richiamato.
 window.alfredMostrato = () => {
   aggiornaSaluto();
   aggiornaOrologio();
-  aggiornaSistema();
-  aggiornaMeteo();
+  if (canale && canale.readyState === WebSocket.OPEN) {
+    canale.send(JSON.stringify({ tipo: "aggiornami" }));
+  }
 };
 
-async function avvio() {
-  try {
-    appellativo = (await (await fetch("/api/stato")).json()).appellativo || appellativo;
-  } catch { /* resta il predefinito */ }
-  window.alfredMostrato();
-  setInterval(aggiornaOrologio, 1000);
-  setInterval(aggiornaSistema, 2000);
-  setInterval(aggiornaMeteo, 10 * 60 * 1000);
-}
+let fasciaAttuale = fascia(new Date().getHours());
+setInterval(() => {
+  aggiornaOrologio();
+  const f = fascia(new Date().getHours());
+  if (f !== fasciaAttuale) {
+    fasciaAttuale = f;
+    aggiornaSaluto();
+  }
+}, 1000);
 
-avvio();
+aggiornaOrologio();
+aggiornaSaluto();
+collega();

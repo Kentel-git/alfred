@@ -10,7 +10,7 @@ from alfred.core import posizione
 DURATA_CACHE_S = 15 * 60
 # Entro questa distanza dalla città di casa (o entro l'errore di GeoClue, se
 # maggiore) Alfred considera di essere a casa.
-RAGGIO_CASA_KM = 20
+RAGGIO_CASA_KM = 5
 
 # Codici WMO usati da Open-Meteo.
 DESCRIZIONI = {

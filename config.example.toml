@@ -14,7 +14,7 @@ porta = 7878
 # (si aggiorna da sola quando ci si sposta). Se GeoClue non è disponibile
 # il riquadro del meteo resta nascosto.
 citta = ""
-# Città di casa: quando la posizione rilevata è nei dintorni (entro 20 km o
+# Città di casa: quando la posizione rilevata è nei dintorni (entro 5 km o
 # entro l'errore di GeoClue) Alfred mostra questa invece del paese rilevato.
 # casa = "Milano"
 # In alternativa coordinate esplicite (hanno la precedenza sulla città):

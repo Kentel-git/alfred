@@ -1,0 +1,4 @@
+#!/bin/sh
+# Avvia Alfred con l'ambiente Python del progetto.
+DIR="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+PYTHONPATH="$DIR${PYTHONPATH:+:$PYTHONPATH}" exec "$DIR/.venv/bin/python" -m alfred "$@"

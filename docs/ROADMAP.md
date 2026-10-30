@@ -3,11 +3,12 @@
 Ogni fase produce qualcosa di usabile da sola.
 
 ## Fase 0 — Finestra e HUD di base
-- [ ] alfred-core: servizio FastAPI su 127.0.0.1, unità systemd utente
-- [ ] alfred-window: finestra GTK/WebKit, `alfred toggle`
-- [ ] regola niri + scorciatoia (Mod+A) tramite `installa.sh`
-- [ ] HUD: ora/data, sistema (CPU, RAM, temperature, batteria), meteo (Open-Meteo)
-- [ ] config.toml + secrets.env, `installa.sh` per altre macchine
+- [x] alfred-core: servizio FastAPI su 127.0.0.1, unità systemd utente
+- [x] alfred-window: finestra GTK/WebKit, `alfred toggle`
+- [x] regola niri + scorciatoia (Mod+A) tramite `installa.sh`
+- [x] HUD: ora/data, sistema (CPU, RAM, temperature, batteria), meteo (Open-Meteo)
+- [ ] meteo: impostare la città sulla macchina di Pietro
+- [x] config.toml + secrets.env, `installa.sh` per altre macchine
 
 ## Fase 1 — Alfred pensa (chat testuale)
 - [ ] adattatore brain `claude -p` in streaming

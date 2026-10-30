@@ -1,0 +1,17 @@
+# Configurazione di Alfred.
+# installa.sh la copia in ~/.config/alfred/config.toml: modifica quella.
+# I segreti (token, password) vanno in ~/.config/alfred/secrets.env, non qui.
+
+[generale]
+# Come Alfred si rivolge a te.
+appellativo = "signore"
+# Porta del servizio (ascolta solo su 127.0.0.1).
+porta = 7878
+
+[meteo]
+# Città per il meteo (Open-Meteo, gratuito e senza chiave).
+# Vuoto = widget meteo nascosto.
+citta = ""
+# In alternativa coordinate esplicite (hanno la precedenza sulla città):
+# latitudine = 45.46
+# longitudine = 9.19

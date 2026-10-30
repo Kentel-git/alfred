@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>Alfred</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="stile.css">
+</head>
+<body>
+  <header>
+    <p id="saluto" class="saluto"></p>
+    <p id="battuta" class="battuta"></p>
+  </header>
+
+  <main>
+    <section class="orologio">
+      <div id="ora" class="ora">--:--</div>
+      <div id="data" class="data"></div>
+    </section>
+
+    <section class="riquadri">
+      <article class="riquadro" id="riquadro-meteo" hidden>
+        <h2>Il tempo</h2>
+        <div class="meteo-ora">
+          <span id="meteo-temp" class="grande"></span>
+          <span id="meteo-desc"></span>
+        </div>
+        <p id="meteo-dettagli" class="tenue"></p>
+        <ul id="meteo-giorni" class="giorni"></ul>
+      </article>
+
+      <article class="riquadro">
+        <h2>La casa</h2>
+        <dl class="misure">
+          <dt>Processore</dt><dd><span id="cpu-uso"></span><div class="barra"><i id="cpu-barra"></i></div></dd>
+          <dt>Temperatura</dt><dd id="cpu-temp"></dd>
+          <dt>Grafica</dt><dd id="gpu-freq"></dd>
+          <dt>Memoria</dt><dd><span id="ram-uso"></span><div class="barra"><i id="ram-barra"></i></div></dd>
+          <dt>Disco</dt><dd id="disco"></dd>
+          <dt>Batteria</dt><dd id="batteria"></dd>
+          <dt>Rete</dt><dd id="rete"></dd>
+        </dl>
+      </article>
+
+      <article class="riquadro in-arrivo">
+        <h2>L'agenda</h2>
+        <p class="tenue">Prenderò in mano la sua agenda nella fase 2.</p>
+      </article>
+
+      <article class="riquadro in-arrivo">
+        <h2>Conversazione</h2>
+        <p class="tenue">Imparerò a conversare nella fase 1 e a parlare nella fase 3.</p>
+      </article>
+    </section>
+  </main>
+
+  <footer class="tenue">Esc per congedare Alfred · F5 per ricaricare</footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

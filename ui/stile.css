@@ -1,0 +1,152 @@
+/* Stile provvisorio: il tema definitivo arriverà più avanti. */
+:root {
+  --sfondo: #0d1117;
+  --sfondo-riquadro: rgba(255, 255, 255, 0.035);
+  --bordo: rgba(201, 179, 126, 0.22);
+  --ottone: #c9b37e;
+  --testo: #e6e1d6;
+  --tenue: #8b8678;
+  --serif: Georgia, "DejaVu Serif", "Liberation Serif", serif;
+  --sans: "Inter", "Noto Sans", "DejaVu Sans", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: clamp(16px, 0.85vw, 24px); }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: radial-gradient(ellipse at top, #1a2130 0%, var(--sfondo) 60%);
+  color: var(--testo);
+  font-family: var(--sans);
+  overflow: hidden;
+  cursor: default;
+  user-select: none;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  padding: 4vh 5vw 2vh;
+  gap: 3vh;
+}
+
+header { text-align: center; }
+
+.saluto {
+  font-family: var(--serif);
+  font-size: clamp(1.6rem, 2.6vw, 2.6rem);
+  color: var(--ottone);
+  margin: 0;
+}
+
+.battuta {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--tenue);
+  font-size: clamp(1rem, 1.3vw, 1.3rem);
+  margin: 0.6rem 0 0;
+  min-height: 1.5em;
+}
+
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4vh;
+  min-height: 0;
+}
+
+.orologio { text-align: center; }
+
+.ora {
+  font-family: var(--serif);
+  font-size: clamp(5rem, 11vw, 11rem);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.data {
+  color: var(--ottone);
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  font-size: clamp(0.8rem, 1vw, 1rem);
+  margin-top: 1rem;
+}
+
+.riquadri {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+  max-width: 1500px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.riquadro {
+  background: var(--sfondo-riquadro);
+  border: 1px solid var(--bordo);
+  border-radius: 6px;
+  padding: 1.4rem 1.6rem;
+}
+
+.riquadro h2 {
+  font-family: var(--serif);
+  font-weight: normal;
+  color: var(--ottone);
+  font-size: 1.15rem;
+  margin: 0 0 1rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--bordo);
+}
+
+.in-arrivo { opacity: 0.55; }
+
+.tenue { color: var(--tenue); }
+
+.grande {
+  font-family: var(--serif);
+  font-size: 3rem;
+  margin-right: 0.6rem;
+}
+
+.meteo-ora { display: flex; align-items: baseline; }
+
+.giorni {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.giorni li { display: flex; justify-content: space-between; gap: 1rem; }
+.giorni li span:first-child { text-transform: capitalize; min-width: 4.5em; }
+
+.misure {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.55rem 1.2rem;
+  margin: 0;
+}
+
+.misure dt { color: var(--tenue); }
+.misure dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+
+.barra {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  margin-top: 0.3rem;
+}
+
+.barra i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--ottone);
+  transition: width 0.6s ease;
+}
+
+footer { text-align: center; font-size: 0.8rem; }

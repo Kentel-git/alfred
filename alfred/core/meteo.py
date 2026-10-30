@@ -1,5 +1,6 @@
 """Meteo da Open-Meteo (gratuito, senza chiave), con cache di 15 minuti."""
 
+import math
 import time
 
 import httpx
@@ -7,6 +8,9 @@ import httpx
 from alfred.core import posizione
 
 DURATA_CACHE_S = 15 * 60
+# Entro questa distanza dalla città di casa (o entro l'errore di GeoClue, se
+# maggiore) Alfred considera di essere a casa.
+RAGGIO_CASA_KM = 20
 
 # Codici WMO usati da Open-Meteo.
 DESCRIZIONI = {
@@ -45,8 +49,19 @@ async def _trova_coordinate(client: httpx.AsyncClient, citta: str) -> tuple[floa
     return _coordinate[citta]
 
 
+def _distanza_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp, dl = p2 - p1, math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 6371 * 2 * math.asin(math.sqrt(a))
+
+
 async def leggi(config_meteo: dict) -> dict | None:
-    """Priorità: coordinate in config, poi città in config, poi posizione del computer."""
+    """Priorità: coordinate in config, poi città in config, poi posizione del computer.
+
+    Con la posizione del computer, se ci si trova nei dintorni della città di
+    casa (`casa` in config) si usa quella al posto del paese rilevato.
+    """
     citta = config_meteo.get("citta", "").strip()
     lat, lon = config_meteo.get("latitudine"), config_meteo.get("longitudine")
     nome = citta or (f"{lat:.2f}, {lon:.2f}" if lat is not None and lon is not None else "")
@@ -60,6 +75,12 @@ async def leggi(config_meteo: dict) -> dict | None:
                 if not pos:
                     return None
                 lat, lon, nome = pos["latitudine"], pos["longitudine"], pos["luogo"]
+                casa = config_meteo.get("casa", "").strip()
+                if casa:
+                    lat_casa, lon_casa, nome_casa = await _trova_coordinate(client, casa)
+                    raggio = max(RAGGIO_CASA_KM, pos["precisione_m"] / 1000)
+                    if _distanza_km(lat, lon, lat_casa, lon_casa) <= raggio:
+                        lat, lon, nome = lat_casa, lon_casa, nome_casa
 
         luogo = (round(lat, 2), round(lon, 2))
         if (

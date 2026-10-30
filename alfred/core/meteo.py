@@ -4,6 +4,8 @@ import time
 
 import httpx
 
+from alfred.core import posizione
+
 DURATA_CACHE_S = 15 * 60
 
 # Codici WMO usati da Open-Meteo.
@@ -20,7 +22,7 @@ DESCRIZIONI = {
     95: "temporale", 96: "temporale con grandine", 99: "temporale con forte grandine",
 }
 
-_cache: dict = {"quando": 0.0, "dati": None}
+_cache: dict = {"quando": 0.0, "dati": None, "luogo": None}
 _coordinate: dict[str, tuple[float, float, str]] = {}
 
 
@@ -44,18 +46,29 @@ async def _trova_coordinate(client: httpx.AsyncClient, citta: str) -> tuple[floa
 
 
 async def leggi(config_meteo: dict) -> dict | None:
+    """Priorità: coordinate in config, poi città in config, poi posizione del computer."""
     citta = config_meteo.get("citta", "").strip()
     lat, lon = config_meteo.get("latitudine"), config_meteo.get("longitudine")
-    if not citta and (lat is None or lon is None):
-        return None
-
-    if _cache["dati"] and time.monotonic() - _cache["quando"] < DURATA_CACHE_S:
-        return _cache["dati"]
+    nome = citta or (f"{lat:.2f}, {lon:.2f}" if lat is not None and lon is not None else "")
 
     async with httpx.AsyncClient(timeout=10) as client:
-        nome = citta
         if lat is None or lon is None:
-            lat, lon, nome = await _trova_coordinate(client, citta)
+            if citta:
+                lat, lon, nome = await _trova_coordinate(client, citta)
+            else:
+                pos = await posizione.trova()
+                if not pos:
+                    return None
+                lat, lon, nome = pos["latitudine"], pos["longitudine"], pos["luogo"]
+
+        luogo = (round(lat, 2), round(lon, 2))
+        if (
+            _cache["dati"]
+            and _cache["luogo"] == luogo
+            and time.monotonic() - _cache["quando"] < DURATA_CACHE_S
+        ):
+            return _cache["dati"]
+
         risposta = await client.get(
             "https://api.open-meteo.com/v1/forecast",
             params={
@@ -94,5 +107,5 @@ async def leggi(config_meteo: dict) -> dict | None:
             for i in range(len(giorni["time"]))
         ],
     }
-    _cache.update(quando=time.monotonic(), dati=dati)
+    _cache.update(quando=time.monotonic(), dati=dati, luogo=luogo)
     return dati

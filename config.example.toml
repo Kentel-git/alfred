@@ -9,8 +9,10 @@ appellativo = "signore"
 porta = 7878
 
 [meteo]
-# Città per il meteo (Open-Meteo, gratuito e senza chiave).
-# Vuoto = widget meteo nascosto.
+# Meteo da Open-Meteo (gratuito, senza chiave).
+# Città vuota = Alfred usa la posizione del computer tramite GeoClue
+# (si aggiorna da sola quando ci si sposta). Se GeoClue non è disponibile
+# il riquadro del meteo resta nascosto.
 citta = ""
 # In alternativa coordinate esplicite (hanno la precedenza sulla città):
 # latitudine = 45.46

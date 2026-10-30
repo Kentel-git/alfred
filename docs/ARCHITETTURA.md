@@ -74,6 +74,15 @@ impeccabile.
 | Modalità gioco | Lancia un comando configurabile | Qui: `steam://rungameid/…` di Battle.net, che passa già da `modalita-gioco` |
 | OBS | obs-websocket v5 (porta 4455) | Scene, avvio/stop live e registrazione, stato |
 
+## Posizione
+
+Il meteo usa la posizione del computer tramite **GeoClue** (servizio libero di
+freedesktop: reti WiFi via BeaconDB, altrimenti indirizzo IP) e il nome del
+luogo da **Nominatim** (OpenStreetMap). Alfred si presenta a GeoClue con l'id
+`alfred`: serve un agente GeoClue attivo che lo autorizzi (GNOME ne ha uno; su
+altri desktop c'è quello demo, `/usr/lib/geoclue-2.0/demos/agent`). Una città o
+delle coordinate in `config.toml` hanno la precedenza.
+
 ## Stack
 
 - Python ≥ 3.12, FastAPI + uvicorn, ambiente virtuale in `.venv`

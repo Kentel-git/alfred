@@ -8,7 +8,7 @@ Ogni fase produce qualcosa di usabile da sola.
 - [x] regola niri + scorciatoia (Mod+A) tramite `installa.sh`
 - [x] HUD: ora/data, sistema (CPU, RAM, temperature, batteria), meteo (Open-Meteo)
 - [x] aggiornamento dal vivo: dati spinti via WebSocket, HUD che si aggiorna da solo quando cambiano grafica, config o codice
-- [ ] meteo: impostare la città sulla macchina di Pietro
+- [x] meteo dalla posizione del computer (GeoClue + Nominatim); città o coordinate in config come alternativa
 - [x] config.toml + secrets.env, `installa.sh` per altre macchine
 
 ## Fase 1 — Alfred pensa (chat testuale)

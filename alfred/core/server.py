@@ -135,7 +135,8 @@ async def canale(ws: WebSocket):
                 # La finestra è appena stata richiamata: dati freschi subito.
                 await diffusore.invia({"tipo": "sistema", "dati": sistema.leggi()}, solo=ws)
                 await diffusore.invia(await _meteo(), solo=ws)
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, RuntimeError):
+        # RuntimeError: il client se n'è andato mentre gli scrivevamo.
         pass
     finally:
         diffusore.client.discard(ws)

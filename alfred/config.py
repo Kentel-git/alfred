@@ -11,6 +11,7 @@ CARTELLA_RUNTIME = Path(os.environ.get("XDG_RUNTIME_DIR", f"/tmp/alfred-{os.getu
 PREDEFINITI = {
     "generale": {"appellativo": "signore", "porta": 7878},
     "meteo": {"citta": ""},
+    "cervello": {"modello": "sonnet"},
 }
 
 

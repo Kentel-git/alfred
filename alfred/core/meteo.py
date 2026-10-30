@@ -30,6 +30,11 @@ _cache: dict = {"quando": 0.0, "dati": None, "luogo": None}
 _coordinate: dict[str, tuple[float, float, str]] = {}
 
 
+def ultimo() -> dict | None:
+    """Ultimo meteo letto, senza nuove richieste (per il contesto del cervello)."""
+    return _cache["dati"]
+
+
 def svuota_cache() -> None:
     _cache.update(quando=0.0, dati=None)
 

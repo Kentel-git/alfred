@@ -102,6 +102,124 @@ function aggiornaStile() {
   }
 }
 
+// --- Conversazione -----------------------------------------------------------
+
+const ETICHETTE_STRUMENTI = {
+  stato_computer: "dà un'occhiata al computer",
+  meteo: "guarda fuori dalla finestra",
+  stato_obs: "controlla OBS",
+};
+
+let bollaInCorso = null; // la risposta che Alfred sta scrivendo
+let inizioAttesa = 0;
+let timerAttesa = null;
+
+function inFondo(forza = false) {
+  const m = $("messaggi");
+  const vicino = m.scrollHeight - m.scrollTop - m.clientHeight < 120;
+  if (forza || vicino) m.scrollTop = m.scrollHeight;
+}
+
+function creaBolla(chi, testo = "", errore = false) {
+  const div = document.createElement("div");
+  div.className = `messaggio ${chi}${errore ? " errore" : ""}`;
+  div.textContent = testo;
+  $("messaggi").querySelector(".vuoto")?.remove();
+  $("messaggi").append(div);
+  inFondo(chi === "utente");
+  return div;
+}
+
+function mostraCronologia(m) {
+  $("messaggi").replaceChildren();
+  bollaInCorso = null;
+  if (!m.messaggi.length) {
+    const p = document.createElement("p");
+    p.className = "vuoto";
+    p.textContent = "Sono a sua disposizione.";
+    $("messaggi").append(p);
+  }
+  for (const msg of m.messaggi) creaBolla(msg.chi, msg.testo, !!msg.errore);
+  if (m.occupato) iniziaAttesa();
+  else fineAttesa();
+  inFondo(true);
+}
+
+function iniziaAttesa() {
+  inizioAttesa = Date.now();
+  $("attesa").hidden = false;
+  $("attesa").textContent = "Alfred riflette";
+  clearInterval(timerAttesa);
+  timerAttesa = setInterval(() => {
+    const s = (Date.now() - inizioAttesa) / 1000;
+    if (s > 45) $("attesa").textContent = "Alfred ci sta mettendo decisamente più del solito";
+    else if (s > 15) $("attesa").textContent = "Alfred ci sta mettendo un po' più del solito";
+  }, 1000);
+}
+
+function fineAttesa() {
+  clearInterval(timerAttesa);
+  $("attesa").hidden = true;
+}
+
+function rispostaParziale(testo) {
+  if (!bollaInCorso) {
+    bollaInCorso = creaBolla("alfred");
+    $("attesa").hidden = true;
+  }
+  if (testo === "" && bollaInCorso.lastChild?.nodeType === Node.TEXT_NODE) {
+    // Nuovo blocco di testo dopo uno strumento: va a capo.
+    bollaInCorso.append(document.createTextNode("\n"));
+  }
+  bollaInCorso.append(document.createTextNode(testo));
+  inFondo();
+}
+
+function rispostaStrumento(nome) {
+  if (!bollaInCorso) bollaInCorso = creaBolla("alfred");
+  const nota = document.createElement("span");
+  nota.className = "strumento";
+  nota.textContent = `Alfred ${ETICHETTE_STRUMENTI[nome] || `usa ${nome}`}`;
+  bollaInCorso.append(nota);
+  inFondo();
+}
+
+function rispostaFine(msg) {
+  fineAttesa();
+  // Il testo definitivo sostituisce quello arrivato a pezzi (note degli strumenti escluse).
+  const bolla = bollaInCorso || creaBolla("alfred");
+  const note = [...bolla.querySelectorAll(".strumento")];
+  bolla.replaceChildren(...note, document.createTextNode(msg.testo));
+  bolla.classList.toggle("errore", !!msg.errore);
+  bollaInCorso = null;
+  inFondo();
+}
+
+function invia(oggetto) {
+  if (canale && canale.readyState === WebSocket.OPEN) {
+    canale.send(JSON.stringify(oggetto));
+    return true;
+  }
+  return false;
+}
+
+$("modulo").addEventListener("submit", (evento) => {
+  evento.preventDefault();
+  const testo = $("domanda").value.trim();
+  if (testo && invia({ tipo: "chat", testo })) $("domanda").value = "";
+});
+
+$("nuova").addEventListener("click", () => {
+  invia({ tipo: "nuova_conversazione" });
+  $("domanda").focus();
+});
+
+// Basta iniziare a scrivere, ovunque: il cursore va da solo nella casella.
+document.addEventListener("keydown", (evento) => {
+  if (evento.target === $("domanda") || evento.ctrlKey || evento.altKey || evento.metaKey) return;
+  if (evento.key.length === 1) $("domanda").focus();
+});
+
 // --- Collegamento col servizio ----------------------------------------------
 // Un solo WebSocket: il servizio spinge i dati e avvisa quando qualcosa cambia.
 // Se cade, si ricollega da solo; se il servizio è stato riavviato con codice
@@ -138,6 +256,25 @@ function collega() {
       case "meteo":
         mostraMeteo(m);
         break;
+      case "cronologia":
+        mostraCronologia(m);
+        break;
+      case "messaggio":
+        creaBolla(m.messaggio.chi, m.messaggio.testo);
+        break;
+      case "risposta_inizio":
+        bollaInCorso = null;
+        iniziaAttesa();
+        break;
+      case "risposta_parziale":
+        rispostaParziale(m.testo);
+        break;
+      case "risposta_strumento":
+        rispostaStrumento(m.nome);
+        break;
+      case "risposta_fine":
+        rispostaFine(m.messaggio);
+        break;
       case "aggiorna":
         if (m.solo_stile) aggiornaStile();
         else location.reload();
@@ -156,9 +293,8 @@ function collega() {
 window.alfredMostrato = () => {
   aggiornaSaluto();
   aggiornaOrologio();
-  if (canale && canale.readyState === WebSocket.OPEN) {
-    canale.send(JSON.stringify({ tipo: "aggiornami" }));
-  }
+  invia({ tipo: "aggiornami" });
+  $("domanda").focus();
 };
 
 let fasciaAttuale = fascia(new Date().getHours());

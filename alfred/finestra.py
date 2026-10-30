@@ -88,6 +88,7 @@ def avvia() -> None:
         finestra.fullscreen()
         finestra.show_all()
         finestra.present()
+        vista.grab_focus()
         vista.run_javascript("window.alfredMostrato && window.alfredMostrato()", None, None, None)
 
     def alterna():

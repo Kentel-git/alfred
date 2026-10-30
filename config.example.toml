@@ -20,3 +20,8 @@ citta = ""
 # In alternativa coordinate esplicite (hanno la precedenza sulla città):
 # latitudine = 45.46
 # longitudine = 9.19
+
+[cervello]
+# Modello di Claude usato da `claude -p`: "sonnet" (consigliato), "opus",
+# "haiku" (più veloce, ma esce più facilmente dal personaggio).
+modello = "sonnet"

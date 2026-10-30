@@ -8,17 +8,16 @@
 </head>
 <body>
   <header>
+    <div class="orologio">
+      <div id="ora" class="ora">--:--</div>
+      <div id="data" class="data"></div>
+    </div>
     <p id="saluto" class="saluto"></p>
     <p id="battuta" class="battuta"></p>
   </header>
 
   <main>
-    <section class="orologio">
-      <div id="ora" class="ora">--:--</div>
-      <div id="data" class="data"></div>
-    </section>
-
-    <section class="riquadri">
+    <aside class="colonna">
       <article class="riquadro" id="riquadro-meteo" hidden>
         <h2>Il tempo</h2>
         <div class="meteo-ora">
@@ -46,15 +45,22 @@
         <h2>L'agenda</h2>
         <p class="tenue">Prenderò in mano la sua agenda nella fase 2.</p>
       </article>
+    </aside>
 
-      <article class="riquadro in-arrivo">
-        <h2>Conversazione</h2>
-        <p class="tenue">Imparerò a conversare nella fase 1 e a parlare nella fase 3.</p>
-      </article>
+    <section class="riquadro conversazione">
+      <h2>
+        <span>Conversazione</span>
+        <button id="nuova" class="pulsante-testo" title="Inizia una nuova conversazione">nuova conversazione</button>
+      </h2>
+      <div id="messaggi" class="messaggi"></div>
+      <div id="attesa" class="attesa" hidden></div>
+      <form id="modulo" class="modulo" autocomplete="off">
+        <input id="domanda" type="text" placeholder="Mi dica, signore…" spellcheck="true">
+      </form>
     </section>
   </main>
 
-  <footer class="tenue">Esc per congedare Alfred · F5 per ricaricare</footer>
+  <footer class="tenue">Esc per congedare Alfred</footer>
 
   <script src="app.js"></script>
 </body>

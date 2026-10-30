@@ -12,10 +12,12 @@ Ogni fase produce qualcosa di usabile da sola.
 - [x] config.toml + secrets.env, `installa.sh` per altre macchine
 
 ## Fase 1 — Alfred pensa (chat testuale)
-- [ ] adattatore brain `claude -p` in streaming
+- [x] adattatore brain `claude -p` in streaming (processo persistente, Sonnet)
 - [x] personalità a strati (docs/ISPIRAZIONI.md) e scheda personale `su-di-me.md`
-- [ ] server MCP con i primi strumenti in sola lettura (stato OBS, ora, sistema)
-- [ ] memoria della conversazione
+- [x] server MCP con i primi strumenti in sola lettura (computer, meteo, OBS)
+- [x] memoria della conversazione (sopravvive ai riavvii, "nuova conversazione")
+- [x] riquadro di conversazione nell'HUD, risposte parola per parola
+- [ ] memoria a lungo termine: cose che Alfred impara su Pietro oltre la scheda
 
 ## Fase 2 — Alfred agisce
 - [ ] Telegram (bot)

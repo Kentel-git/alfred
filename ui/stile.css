@@ -28,8 +28,8 @@ html, body {
 body {
   display: flex;
   flex-direction: column;
-  padding: 4vh 5vw 2vh;
-  gap: 3vh;
+  padding: 3vh 4vw 1.5vh;
+  gap: 2.5vh;
 }
 
 header { text-align: center; }
@@ -52,17 +52,35 @@ header { text-align: center; }
 
 main {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4vh;
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) 2fr;
+  gap: 1.5rem;
   min-height: 0;
+  max-width: 1700px;
+  width: 100%;
+  margin: 0 auto;
 }
 
-.orologio { text-align: center; }
+.colonna {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Schermi stretti: tutto in colonna, la conversazione per prima. */
+@media (max-width: 900px) {
+  html, body { overflow-y: auto; }
+  main { grid-template-columns: 1fr; }
+  .conversazione { order: -1; min-height: 70vh; }
+}
+
+.orologio { text-align: center; margin-bottom: 1.2rem; }
 
 .ora {
   font-family: var(--serif);
-  font-size: clamp(5rem, 11vw, 11rem);
+  font-size: clamp(3.5rem, 7vw, 8rem);
   line-height: 1;
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
@@ -73,16 +91,7 @@ main {
   text-transform: uppercase;
   letter-spacing: 0.3em;
   font-size: clamp(0.8rem, 1vw, 1rem);
-  margin-top: 1rem;
-}
-
-.riquadri {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1.5rem;
-  max-width: 1500px;
-  width: 100%;
-  margin: 0 auto;
+  margin-top: 0.6rem;
 }
 
 .riquadro {
@@ -154,3 +163,97 @@ footer { text-align: center; font-size: 0.8rem; }
 /* Collegamento col servizio perso: l'HUD si attenua finché non torna. */
 body.scollegato main { opacity: 0.35; transition: opacity 0.4s; }
 body.scollegato .battuta::after { content: " (un attimo: ho perso il filo.)"; }
+
+/* --- Conversazione ------------------------------------------------------- */
+.conversazione {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.conversazione h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.pulsante-testo {
+  background: none;
+  border: none;
+  color: var(--tenue);
+  font: inherit;
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.pulsante-testo:hover { color: var(--ottone); }
+
+.messaggi {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding-right: 0.5rem;
+  user-select: text;
+}
+
+.messaggio { max-width: 85%; line-height: 1.55; white-space: pre-wrap; }
+
+.messaggio.utente {
+  align-self: flex-end;
+  background: rgba(201, 179, 126, 0.08);
+  border: 1px solid var(--bordo);
+  border-radius: 6px;
+  padding: 0.55rem 0.9rem;
+}
+
+.messaggio.alfred {
+  align-self: flex-start;
+  font-family: var(--serif);
+  font-size: 1.15rem;
+}
+
+.messaggio.errore { color: #d9a07a; }
+
+.strumento {
+  display: block;
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--tenue);
+  margin-bottom: 0.3rem;
+}
+
+.vuoto {
+  margin: auto;
+  text-align: center;
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--tenue);
+}
+
+.attesa {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--tenue);
+  margin-top: 0.8rem;
+}
+.attesa::after { content: "…"; animation: respiro 1.4s ease-in-out infinite; }
+@keyframes respiro { 50% { opacity: 0.2; } }
+
+.modulo { margin-top: 1rem; }
+
+.modulo input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--bordo);
+  border-radius: 6px;
+  color: var(--testo);
+  font: inherit;
+  font-size: 1.05rem;
+  padding: 0.8rem 1rem;
+  outline: none;
+}
+.modulo input:focus { border-color: var(--ottone); }
+.modulo input::placeholder { color: var(--tenue); font-style: italic; }

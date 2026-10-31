@@ -140,9 +140,13 @@ function mostraLimiti(m) {
   const minuti = Math.round((Date.now() / 1000 - m.aggiornato) / 60);
   const eta = minuti < 1 ? "aggiornate ora" : `aggiornate ${minuti} min fa`;
   const token = m.oggi.token >= 1000 ? `${Math.round(m.oggi.token / 1000)} mila token` : `${m.oggi.token} token`;
-  $("riserve-note").textContent = m.oggi.messaggi
-    ? `Alfred oggi: ${m.oggi.messaggi} risposte, ${token} · ${eta}`
-    : `Alfred oggi non ha ancora parlato · ${eta}`;
+  const consumo = m.oggi.messaggi
+    ? `Alfred oggi: ${m.oggi.messaggi} risposte, ${token}`
+    : "Alfred oggi non ha ancora parlato";
+  const r = m.regime || { nome: "normale" };
+  const regime = r.nome === "normale" ? "regime normale" : `regime di ${r.nome} (${r.motivo})`;
+  $("riserve-note").textContent = `${consumo} · ${regime} · ${eta}`;
+  $("riserve-note").classList.toggle("avviso", r.nome !== "normale");
 }
 
 // --- Conversazione -----------------------------------------------------------
@@ -163,9 +167,15 @@ function inFondo(forza = false) {
   if (forza || vicino) m.scrollTop = m.scrollHeight;
 }
 
-function creaBolla(chi, testo = "", errore = false) {
+function etichettaModello(bolla, modello) {
+  if (modello === undefined) return;
+  bolla.dataset.modello = modello ? modello : "senza consumare riserve";
+}
+
+function creaBolla(chi, testo = "", errore = false, modello) {
   const div = document.createElement("div");
   div.className = `messaggio ${chi}${errore ? " errore" : ""}`;
+  etichettaModello(div, modello);
   div.textContent = testo;
   $("messaggi").querySelector(".vuoto")?.remove();
   $("messaggi").append(div);
@@ -182,7 +192,7 @@ function mostraCronologia(m) {
     p.textContent = "Sono a sua disposizione.";
     $("messaggi").append(p);
   }
-  for (const msg of m.messaggi) creaBolla(msg.chi, msg.testo, !!msg.errore);
+  for (const msg of m.messaggi) creaBolla(msg.chi, msg.testo, !!msg.errore, msg.modello);
   if (m.occupato) iniziaAttesa();
   else fineAttesa();
   inFondo(true);
@@ -234,6 +244,7 @@ function rispostaFine(msg) {
   const note = [...bolla.querySelectorAll(".strumento")];
   bolla.replaceChildren(...note, document.createTextNode(msg.testo));
   bolla.classList.toggle("errore", !!msg.errore);
+  etichettaModello(bolla, msg.modello);
   bollaInCorso = null;
   inFondo();
 }

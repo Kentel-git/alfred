@@ -42,7 +42,19 @@ def stato() -> dict:
     oggi = _stato.get("oggi") or {}
     if oggi.get("data") != date.today().isoformat():
         oggi = {"data": date.today().isoformat(), "messaggi": 0, "token": 0}
-    return {"tipo": "limiti", **_stato, "oggi": oggi}
+    risultato = {"tipo": "limiti", **_stato, "oggi": oggi}
+    if _economo:
+        risultato["regime"] = _economo.regime(risultato)
+    return risultato
+
+
+_economo = None
+
+
+def collega_economo(economo) -> None:
+    """Così lo stato delle riserve riporta anche il regime dell'economo."""
+    global _economo
+    _economo = economo
 
 
 def eta_s() -> float:

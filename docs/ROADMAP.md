@@ -18,9 +18,11 @@ Ogni fase produce qualcosa di usabile da sola.
 - [x] memoria della conversazione (sopravvive ai riavvii, "nuova conversazione")
 - [x] riquadro di conversazione nell'HUD, risposte parola per parola
 - [x] "Le riserve": limiti di utilizzo di Claude (sessione e settimana) e consumo di Alfred nell'HUD
+- [x] economo: modello per compito (Haiku quotidiano, Sonnet profondo) e regimi di risparmio
 - [ ] memoria a lungo termine: cose che Alfred impara su Pietro oltre la scheda
 
 ## Fase 2 — Alfred agisce
+- [ ] comandi diretti a costo zero: frasi comuni riconosciute in locale, senza modello
 - [ ] Telegram (bot)
 - [ ] agenda: lettura, creazione e modifica di eventi
 - [ ] modalità gioco → Battle.net

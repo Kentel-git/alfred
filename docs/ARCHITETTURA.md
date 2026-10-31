@@ -74,6 +74,27 @@ impeccabile.
 | Modalità gioco | Lancia un comando configurabile | Qui: `steam://rungameid/…` di Battle.net, che passa già da `modalita-gioco` |
 | OBS | obs-websocket v5 (porta 4455) | Scene, avvio/stop live e registrazione, stato |
 
+## Economia delle risorse
+
+Le riserve (limiti di utilizzo dell'abbonamento Claude, finestra di 5 ore e
+settimanale) sono condivise con tutto il resto del lavoro dell'utente. Alfred
+le legge dagli eventi di `claude -p` e le mostra nell'HUD ("Le riserve").
+L'**economo** (`alfred/brain/economo.py`) sceglie il modello per ogni compito:
+
+| Compito | Modello |
+|---|---|
+| Comandi diretti (fase 2: OBS, gioco, Telegram…) | nessuno: riconosciuti ed eseguiti in locale |
+| Conversazione quotidiana | `quotidiano` (Haiku) |
+| Riflessioni, consigli, decisioni, lato cinico | `profondo` (Sonnet), riconosciuti in locale |
+| Sonda delle riserve, riassunti, briefing | Haiku |
+
+E un regime in base alle riserve: **normale**; **parsimonia** (solo modello
+quotidiano) oltre metà settimana o se il consumo corre più del calendario;
+**austerità** (nessun modello, salvo "è importante") oltre l'80% della
+settimana o il 90% della sessione. Soglie in `[economia]` di `config.toml`.
+Regola di progetto: ogni nuova funzione deve dichiarare quale modello usa, e
+preferire sempre la soluzione senza modello quando basta.
+
 ## Posizione
 
 Il meteo usa la posizione del computer tramite **GeoClue** (servizio libero di

@@ -22,6 +22,21 @@ citta = ""
 # longitudine = 9.19
 
 [cervello]
-# Modello di Claude usato da `claude -p`: "sonnet" (consigliato), "opus",
-# "haiku" (più veloce, ma esce più facilmente dal personaggio).
-modello = "sonnet"
+# Alfred sceglie il modello in base al compito, riconosciuto in locale:
+# - quotidiano: conversazione di tutti i giorni (leggero, consuma poco);
+# - profondo: riflessioni, consigli, decisioni, lato cinico.
+# Valori possibili: "haiku", "sonnet", "opus" (sconsigliato: consuma molto).
+quotidiano = "haiku"
+profondo = "sonnet"
+
+[economia]
+# Le riserve (limiti dell'abbonamento Claude) sono condivise con tutto il resto
+# del tuo lavoro: Alfred si autolimita per non esaurirle.
+# Oltre questa quota della settimana usa solo il modello quotidiano:
+parsimonia_settimana = 0.5
+# ...e lo stesso se consuma più in fretta di quanto passi la settimana
+# (es. 0.15 = più di 15 punti oltre la quota di settimana trascorsa):
+anticipo_sul_ritmo = 0.15
+# Oltre queste quote smette di usare Claude (salvo "è importante"):
+austerita_settimana = 0.8
+austerita_sessione = 0.9

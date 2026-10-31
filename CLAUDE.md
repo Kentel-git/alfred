@@ -18,6 +18,9 @@ leggili prima di lavorare e aggiorna la roadmap quando chiudi un punto.
 - Il servizio ascolta solo su 127.0.0.1.
 - Niente materiale protetto da copyright (loghi, immagini, musiche DC/Batman):
   il tema è "maggiordomo britannico", con risorse originali.
+- Riserve: ogni funzione che usa un modello deve passare dall'economo
+  (`alfred/brain/economo.py`) e usare il modello più leggero che basta; se si
+  può fare senza modello, si fa senza. Opus mai di default.
 - Le azioni sensibili (inviare messaggi, avviare/fermare live o registrazioni)
   passano da una conferma.
 

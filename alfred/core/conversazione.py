@@ -13,6 +13,7 @@ from datetime import datetime
 
 from alfred import config
 from alfred.brain.claude import CervelloClaude
+from alfred.brain.economo import RISPOSTE_AUSTERITA, Economo
 from alfred.config import CARTELLA_STATO
 from alfred.core import limiti, meteo
 
@@ -41,8 +42,10 @@ class Conversazione:
         self._sessione: str | None = None
         self._carica()
         cfg = config.carica()
+        self.economo = Economo(cfg)
+        limiti.collega_economo(self.economo)
         self.cervello = CervelloClaude(
-            modello=cfg["cervello"]["modello"],
+            modello=cfg["cervello"]["quotidiano"],
             appellativo=cfg["generale"]["appellativo"],
             sessione=self._sessione,
         )
@@ -79,11 +82,20 @@ class Conversazione:
         asyncio.create_task(self._rispondi(testo))
 
     async def _rispondi(self, testo: str) -> None:
+        modello = self.economo.scegli(testo, limiti.stato())
+        if modello is None:
+            # Austerità: Alfred risponde da sé, senza spendere riserve.
+            messaggio = {"chi": "alfred", "testo": RISPOSTE_AUSTERITA[0], "quando": time.time(), "modello": None}
+            self.messaggi.append(messaggio)
+            self._salva()
+            await self._invia({"tipo": "risposta_fine", "messaggio": messaggio})
+            return
+
         self.occupato = True
-        await self._invia({"tipo": "risposta_inizio"})
+        await self._invia({"tipo": "risposta_inizio", "modello": modello})
         risposta, errore = "", None
         try:
-            async for evento in self.cervello.chiedi(f"{_contesto()}\n{testo}"):
+            async for evento in self.cervello.chiedi(f"{_contesto()}\n{testo}", modello):
                 match evento["tipo"]:
                     case "parziale":
                         await self._invia({"tipo": "risposta_parziale", "testo": evento["testo"]})
@@ -107,6 +119,7 @@ class Conversazione:
             "chi": "alfred",
             "testo": risposta.strip() or "Perdoni, signore: ho perso il filo del discorso. Può ripetere?",
             "quando": time.time(),
+            "modello": modello,
         }
         if errore:
             log.warning("risposta con errore: %s", errore)
@@ -125,7 +138,7 @@ class Conversazione:
         """Personalità o scheda cambiate: il cervello riparte con la stessa conversazione."""
         cfg = config.carica()
         self.cervello.appellativo = cfg["generale"]["appellativo"]
-        self.cervello.modello = cfg["cervello"]["modello"]
+        self.economo.aggiorna_config(cfg)
         await self.cervello.riavvia()
         log.info("cervello riavviato con la nuova personalità")
 

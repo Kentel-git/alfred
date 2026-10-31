@@ -12,7 +12,13 @@ CARTELLA_RUNTIME = Path(os.environ.get("XDG_RUNTIME_DIR", f"/tmp/alfred-{os.getu
 PREDEFINITI = {
     "generale": {"appellativo": "signore", "porta": 7878},
     "meteo": {"citta": ""},
-    "cervello": {"modello": "sonnet"},
+    "cervello": {"quotidiano": "haiku", "profondo": "sonnet"},
+    "economia": {
+        "parsimonia_settimana": 0.5,
+        "austerita_settimana": 0.8,
+        "austerita_sessione": 0.9,
+        "anticipo_sul_ritmo": 0.15,
+    },
 }
 
 

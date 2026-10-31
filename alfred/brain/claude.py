@@ -97,13 +97,17 @@ class CervelloClaude:
             await self.ferma()
             self.sessione = None
 
-    async def chiedi(self, testo: str) -> AsyncIterator[dict]:
+    async def chiedi(self, testo: str, modello: str | None = None) -> AsyncIterator[dict]:
         """Manda un messaggio e restituisce gli eventi della risposta:
         {"tipo": "sessione", "id"}, {"tipo": "parziale", "testo"},
         {"tipo": "strumento", "nome"}, {"tipo": "limiti", "dati"},
         {"tipo": "fine", "testo", "errore", "token"}.
         """
         async with self._turno:
+            if modello and modello != self.modello:
+                # Si cambia modello riprendendo la stessa conversazione (--resume).
+                await self.ferma()
+                self.modello = modello
             for tentativo in range(2):
                 if not self._vivo():
                     await self._avvia()

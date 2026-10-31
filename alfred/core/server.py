@@ -39,6 +39,7 @@ CARTELLA_CODICE = CARTELLA_PROGETTO / "alfred"
 INTERVALLO_SISTEMA_S = 2
 INTERVALLO_METEO_S = 10 * 60
 INTERVALLO_LIMITI_S = 30 * 60
+INTERVALLO_REGIA_S = 3
 LIMITI_VECCHI_S = 5 * 60
 
 # Cambia a ogni avvio: l'HUD lo usa per capire che il servizio è stato aggiornato.
@@ -91,6 +92,14 @@ async def _ciclo_meteo() -> None:
             await diffusore.invia(await _meteo())
 
 
+async def _ciclo_regia() -> None:
+    """Stato di OBS per l'HUD (locale, nessun costo)."""
+    while True:
+        if diffusore.client:
+            await diffusore.invia({"tipo": "regia", "dati": await obs.stato(config.carica().get("obs", {}))})
+        await asyncio.sleep(INTERVALLO_REGIA_S)
+
+
 async def _aggiorna_limiti() -> None:
     if await limiti.sonda():
         await diffusore.invia(limiti.stato())
@@ -137,6 +146,7 @@ async def ciclo_di_vita(_app: FastAPI):
         asyncio.create_task(_ciclo_sistema()),
         asyncio.create_task(_ciclo_meteo()),
         asyncio.create_task(_ciclo_limiti()),
+        asyncio.create_task(_ciclo_regia()),
         asyncio.create_task(_osserva_file()),
     ]
     yield
@@ -158,6 +168,8 @@ async def canale(ws: WebSocket):
     await diffusore.invia({"tipo": "sistema", "dati": sistema.leggi()}, solo=ws)
     await diffusore.invia(conversazione.stato(), solo=ws)
     await diffusore.invia(limiti.stato(), solo=ws)
+    if attesa := conversazione.azioni.stato_attesa():
+        await diffusore.invia(attesa, solo=ws)
     await diffusore.invia(await _meteo(), solo=ws)
     try:
         while True:
@@ -173,6 +185,15 @@ async def canale(ws: WebSocket):
                     await conversazione.ricevi(str(messaggio.get("testo", "")))
                 case "nuova_conversazione":
                     await conversazione.nuova()
+                case "azione":
+                    # Pulsanti dell'HUD: stessa strada dei comandi diretti.
+                    esito = await conversazione.azioni.richiedi(
+                        str(messaggio.get("nome")), messaggio.get("parametri") or {}
+                    )
+                    if not esito.get("in_attesa_di_conferma"):
+                        await conversazione.annuncia(esito["messaggio"], esito)
+                case "conferma_azione":
+                    await conversazione.azioni.conferma_da_hud(bool(messaggio.get("si")), str(messaggio.get("id")))
     except (WebSocketDisconnect, RuntimeError):
         # RuntimeError: il client se n'è andato mentre gli scrivevamo.
         pass
@@ -196,6 +217,12 @@ async def dati_meteo():
     if "errore" in risposta:
         return JSONResponse({"errore": risposta["errore"]}, status_code=503)
     return risposta["dati"]
+
+
+@app.post("/api/azioni/{nome}")
+async def azione(nome: str, parametri: dict | None = None):
+    """Usato dal cervello (strumenti MCP): le azioni sensibili restano in attesa di conferma."""
+    return await conversazione.azioni.richiedi(nome, parametri or {})
 
 
 @app.get("/api/obs")

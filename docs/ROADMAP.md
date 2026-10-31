@@ -19,15 +19,14 @@ Ogni fase produce qualcosa di usabile da sola.
 - [x] riquadro di conversazione nell'HUD, risposte parola per parola
 - [x] "Le riserve": limiti di utilizzo di Claude (sessione e settimana) e consumo di Alfred nell'HUD
 - [x] economo: modello per compito (Haiku quotidiano, Sonnet profondo) e regimi di risparmio
-- [ ] memoria a lungo termine: cose che Alfred impara su Pietro oltre la scheda
 
 ## Fase 2 — Alfred agisce
-- [ ] comandi diretti a costo zero: frasi comuni riconosciute in locale, senza modello
+- [x] comandi diretti a costo zero: frasi comuni riconosciute in locale, senza modello
 - [ ] Telegram (bot)
 - [ ] agenda: lettura, creazione e modifica di eventi
-- [ ] modalità gioco → Battle.net
-- [ ] OBS: scene, live, registrazione
-- [ ] conferme per le azioni sensibili
+- [x] modalità gioco → Battle.net (comando in config; da provare dal vivo)
+- [x] OBS: apertura, scene, diretta, registrazione; riquadro "La regia" nell'HUD
+- [x] conferme per le azioni sensibili (pulsanti o "sì"/"no")
 
 ## Fase 3 — Alfred parla
 - [ ] parola di attivazione
@@ -36,6 +35,7 @@ Ogni fase produce qualcosa di usabile da sola.
 - [ ] interruzione (si parla sopra ad Alfred e lui tace)
 
 ## Fase 4 — Alfred di sua iniziativa
+- [ ] memoria a lungo termine: cose che Alfred impara su Pietro oltre la scheda
 - [ ] briefing del mattino
 - [ ] promemoria (agenda, live in arrivo)
 - [ ] avvisi su Telegram quando si è lontani dal PC

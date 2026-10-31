@@ -18,6 +18,25 @@
 
   <main>
     <aside class="colonna">
+      <article class="riquadro" id="riquadro-regia" hidden>
+        <h2>La regia</h2>
+        <div id="regia-chiusa" hidden>
+          <p class="tenue">OBS è chiuso.</p>
+          <button class="pulsante" data-azione="apri_obs">Apri OBS</button>
+        </div>
+        <div id="regia-aperta" hidden>
+          <dl class="misure">
+            <dt>Diretta</dt><dd id="regia-diretta"></dd>
+            <dt>Registrazione</dt><dd id="regia-registrazione"></dd>
+          </dl>
+          <div class="pulsanti">
+            <button class="pulsante" id="pulsante-diretta"></button>
+            <button class="pulsante" id="pulsante-registrazione"></button>
+          </div>
+          <div id="regia-scene" class="scene"></div>
+        </div>
+      </article>
+
       <article class="riquadro" id="riquadro-meteo" hidden>
         <h2>Il tempo</h2>
         <div class="meteo-ora">
@@ -49,6 +68,11 @@
       </h2>
       <div id="messaggi" class="messaggi"></div>
       <div id="attesa" class="attesa" hidden></div>
+      <div id="conferma" class="conferma" hidden>
+        <span id="conferma-domanda"></span>
+        <button class="pulsante principale" id="conferma-si">Sì</button>
+        <button class="pulsante" id="conferma-no">No</button>
+      </div>
       <form id="modulo" class="modulo" autocomplete="off">
         <input id="domanda" type="text" placeholder="Mi dica, signore…" spellcheck="true">
       </form>

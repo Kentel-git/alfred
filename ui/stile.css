@@ -12,6 +12,9 @@
 
 * { box-sizing: border-box; }
 
+/* "hidden" vince sempre, anche sugli elementi con display impostato. */
+[hidden] { display: none !important; }
+
 html { font-size: clamp(16px, 0.85vw, 24px); }
 
 html, body {
@@ -191,6 +194,40 @@ footer { text-align: center; font-size: 0.8rem; }
 /* Collegamento col servizio perso: l'HUD si attenua finché non torna. */
 body.scollegato main { opacity: 0.35; transition: opacity 0.4s; }
 body.scollegato .battuta::after { content: " (un attimo: ho perso il filo.)"; }
+
+/* --- Pulsanti e regia ---------------------------------------------------- */
+.pulsante {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--bordo);
+  border-radius: 4px;
+  color: var(--testo);
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+}
+.pulsante:hover { border-color: var(--ottone); color: var(--ottone); }
+.pulsante.principale { background: rgba(201, 179, 126, 0.15); border-color: var(--ottone); }
+.pulsante.attivo { background: rgba(201, 179, 126, 0.2); border-color: var(--ottone); color: var(--ottone); }
+
+.pulsanti { display: flex; gap: 0.6rem; margin-top: 1rem; }
+.scene { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.8rem; }
+
+.in-onda { color: #e06a5a; }
+.in-onda::before { content: "● "; animation: respiro 1.6s ease-in-out infinite; }
+
+.conferma {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--ottone);
+  border-radius: 6px;
+  background: rgba(201, 179, 126, 0.08);
+  font-family: var(--serif);
+}
+.conferma span { flex: 1; }
 
 /* --- Conversazione ------------------------------------------------------- */
 .conversazione {

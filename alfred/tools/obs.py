@@ -5,6 +5,7 @@ import hashlib
 import itertools
 import json
 import os
+import subprocess
 
 import websockets
 
@@ -45,9 +46,34 @@ async def _richieste(config_obs: dict, richieste: list[tuple[str, dict | None]])
             while True:
                 m = json.loads(await ws.recv())
                 if m["op"] == 7 and m["d"]["requestId"] == rid:
-                    risultati.append(m["d"].get("responseData") or {})
+                    esito = m["d"].get("requestStatus", {})
+                    risultati.append({
+                        **(m["d"].get("responseData") or {}),
+                        "_ok": esito.get("result", False),
+                        "_errore": esito.get("comment"),
+                    })
                     break
         return risultati
+
+
+def apri(config_obs: dict) -> bool:
+    """Avvia OBS con il comando configurato (non aspetta che sia pronto)."""
+    comando = config_obs.get("comando_avvio")
+    if not comando:
+        return False
+    subprocess.Popen(
+        comando,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    return True
+
+
+async def esegui(config_obs: dict, tipo: str, dati: dict | None = None) -> dict:
+    """Una singola richiesta a OBS (solleva ObsNonRaggiungibile se è chiuso)."""
+    return (await _richieste(config_obs, [(tipo, dati)]))[0]
 
 
 async def stato(config_obs: dict) -> dict:

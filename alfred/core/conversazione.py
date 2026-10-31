@@ -15,7 +15,8 @@ from alfred import config
 from alfred.brain.claude import CervelloClaude
 from alfred.brain.economo import RISPOSTE_AUSTERITA, Economo
 from alfred.config import CARTELLA_STATO
-from alfred.core import limiti, meteo
+from alfred.core import comandi, limiti, meteo
+from alfred.core.azioni import Gestore, descrizione_per_riferire
 
 FILE_CONVERSAZIONE = CARTELLA_STATO / "conversazione.json"
 MAX_MESSAGGI = 100
@@ -50,6 +51,10 @@ class Conversazione:
             sessione=self._sessione,
         )
         self.occupato = False
+        self.azioni = Gestore(invia, self.annuncia)
+        # Ciò che è successo senza il cervello (comandi diretti, conferme):
+        # glielo si racconta al messaggio successivo, così resta coerente.
+        self._da_riferire: list[str] = []
 
     def _carica(self) -> None:
         try:
@@ -79,7 +84,31 @@ class Conversazione:
         self.messaggi.append(domanda)
         self._salva()
         await self._invia({"tipo": "messaggio", "messaggio": domanda})
+
+        # Prima i comandi diretti: zero token, risposta immediata.
+        comando = comandi.riconosci(testo)
+        if comando:
+            nome, parametri = comando
+            if nome in ("conferma", "annulla"):
+                esito = await self.azioni.conferma(nome == "conferma")
+                if esito:
+                    await self.annuncia(esito["messaggio"], esito)
+                    return
+                # Nessuna conferma in attesa: è conversazione, ci pensa il cervello.
+            else:
+                esito = await self.azioni.richiedi(nome, parametri)
+                await self.annuncia(esito["messaggio"], esito)
+                return
         asyncio.create_task(self._rispondi(testo))
+
+    async def annuncia(self, testo: str, esito: dict | None = None) -> None:
+        """Messaggio di Alfred senza cervello (esito di un'azione)."""
+        messaggio = {"chi": "alfred", "testo": testo, "quando": time.time(), "modello": None}
+        self.messaggi.append(messaggio)
+        self._salva()
+        if esito:
+            self._da_riferire.append(descrizione_per_riferire(esito))
+        await self._invia({"tipo": "messaggio", "messaggio": messaggio})
 
     async def _rispondi(self, testo: str) -> None:
         modello = self.economo.scegli(testo, limiti.stato())
@@ -95,7 +124,11 @@ class Conversazione:
         await self._invia({"tipo": "risposta_inizio", "modello": modello})
         risposta, errore = "", None
         try:
-            async for evento in self.cervello.chiedi(f"{_contesto()}\n{testo}", modello):
+            riferimenti = ""
+            if self._da_riferire:
+                riferimenti = "[Nel frattempo, senza passare da te: " + "; ".join(self._da_riferire) + "]\n"
+                self._da_riferire = []
+            async for evento in self.cervello.chiedi(f"{_contesto()}\n{riferimenti}{testo}", modello):
                 match evento["tipo"]:
                     case "parziale":
                         await self._invia({"tipo": "risposta_parziale", "testo": evento["testo"]})

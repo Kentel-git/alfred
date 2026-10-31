@@ -40,3 +40,16 @@ anticipo_sul_ritmo = 0.15
 # Oltre queste quote smette di usare Claude (salvo "è importante"):
 austerita_settimana = 0.8
 austerita_sessione = 0.9
+
+[gioco]
+# Comando per la modalità gioco e nome del processo per capire se è già aperto.
+# comando = ["steam", "-silent", "steam://rungameid/<id>"]
+# processo = "Battle.net"
+
+[obs]
+# obs-websocket (OBS ≥ 28: Strumenti → Impostazioni server WebSocket).
+host = "127.0.0.1"
+porta = 4455
+# Se il server ha la password: ALFRED_OBS_PASSWORD in secrets.env.
+# Comando per aprire OBS, es. ["obs"] oppure ["flatpak", "run", "com.obsproject.Studio"]
+comando_avvio = ["obs"]

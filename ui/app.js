@@ -149,6 +149,64 @@ function mostraLimiti(m) {
   $("riserve-note").classList.toggle("avviso", r.nome !== "normale");
 }
 
+// --- La regia (OBS) ------------------------------------------------------------
+
+function azione(nome, parametri = {}) {
+  invia({ tipo: "azione", nome, parametri });
+}
+
+function mostraRegia(r) {
+  $("riquadro-regia").hidden = false;
+  $("regia-chiusa").hidden = r.aperto;
+  $("regia-aperta").hidden = !r.aperto;
+  if (!r.aperto) return;
+
+  const durata = (t) => (t || "").split(".")[0];
+  $("regia-diretta").textContent = r.diretta.attiva ? `in onda · ${durata(r.diretta.durata)}` : "spenta";
+  $("regia-diretta").classList.toggle("in-onda", r.diretta.attiva);
+  const reg = r.registrazione;
+  $("regia-registrazione").textContent = reg.attiva
+    ? (reg.in_pausa ? `in pausa · ${durata(reg.durata)}` : `in corso · ${durata(reg.durata)}`)
+    : "spenta";
+  $("regia-registrazione").classList.toggle("in-onda", reg.attiva && !reg.in_pausa);
+
+  $("pulsante-diretta").textContent = r.diretta.attiva ? "Chiudi la diretta" : "Vai in diretta";
+  $("pulsante-diretta").dataset.azione = r.diretta.attiva ? "ferma_diretta" : "avvia_diretta";
+  $("pulsante-registrazione").textContent = reg.attiva ? "Ferma la registrazione" : "Registra";
+  $("pulsante-registrazione").dataset.azione = reg.attiva ? "ferma_registrazione" : "avvia_registrazione";
+
+  // Le scene si ridisegnano solo se cambiano, per non disturbare i clic.
+  const firma = JSON.stringify([r.scene, r.scena_attuale]);
+  if ($("regia-scene").dataset.firma !== firma) {
+    $("regia-scene").dataset.firma = firma;
+    $("regia-scene").replaceChildren(...r.scene.map((nome) => {
+      const b = document.createElement("button");
+      b.className = `pulsante${nome === r.scena_attuale ? " attivo" : ""}`;
+      b.textContent = nome;
+      b.addEventListener("click", () => azione("cambia_scena", { scena: nome }));
+      return b;
+    }));
+  }
+}
+
+for (const b of document.querySelectorAll("[data-azione], #pulsante-diretta, #pulsante-registrazione")) {
+  b.addEventListener("click", () => azione(b.dataset.azione));
+}
+
+function mostraConferma(m) {
+  $("conferma").dataset.id = m.id;
+  $("conferma-domanda").textContent = m.domanda;
+  $("conferma").hidden = false;
+  inFondo(true);
+}
+
+$("conferma-si").addEventListener("click", () => {
+  invia({ tipo: "conferma_azione", id: $("conferma").dataset.id, si: true });
+});
+$("conferma-no").addEventListener("click", () => {
+  invia({ tipo: "conferma_azione", id: $("conferma").dataset.id, si: false });
+});
+
 // --- Conversazione -----------------------------------------------------------
 
 const ETICHETTE_STRUMENTI = {
@@ -317,7 +375,16 @@ function collega() {
         mostraCronologia(m);
         break;
       case "messaggio":
-        creaBolla(m.messaggio.chi, m.messaggio.testo);
+        creaBolla(m.messaggio.chi, m.messaggio.testo, !!m.messaggio.errore, m.messaggio.modello);
+        break;
+      case "conferma":
+        mostraConferma(m);
+        break;
+      case "conferma_chiusa":
+        if ($("conferma").dataset.id === m.id) $("conferma").hidden = true;
+        break;
+      case "regia":
+        mostraRegia(m.dati);
         break;
       case "risposta_inizio":
         bollaInCorso = null;

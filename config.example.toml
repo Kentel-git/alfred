@@ -59,5 +59,8 @@ porta = 4455
 comando_avvio = ["obs"]
 
 [agenda]
-# Google Calendar: vedi docs/AGENDA.md. Per default i calendari visibili;
-# per sceglierli: calendari = ["primary", "…@group.calendar.google.com"]
+# Google Calendar: vedi docs/AGENDA.md.
+# I tuoi calendari personali (nomi come in Google Calendar, oppure id): sono
+# quelli dell'HUD e di "cosa ho domani". Gli altri visibili Alfred li consulta
+# solo se li nomini. Senza questa riga: tutti i calendari visibili.
+# calendari = ["Lavoro", "Famiglia"]

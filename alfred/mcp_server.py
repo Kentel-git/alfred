@@ -99,11 +99,15 @@ async def invia_telegram(testo: str) -> dict:
 
 
 @server.tool(annotations=SOLA_LETTURA)
-async def agenda_eventi(da: str, a: str) -> dict:
+async def agenda_eventi(da: str, a: str, calendari: list[str] | None = None) -> dict:
     """Eventi dell'agenda di Pietro tra due date (AAAA-MM-GG, "a" esclusa),
-    con id e calendario: servono per spostare o eliminare un evento."""
+    con id e calendario: servono per spostare o eliminare un evento.
+    Senza "calendari" legge solo i suoi calendari personali; gli altri sono
+    elencati in "altri_calendari" e vanno consultati solo se lui li nomina o
+    la domanda li riguarda: passa i loro nomi, oppure ["tutti"]."""
+    parametri = {"da": da, "a": a, "calendari": ",".join(calendari or [])}
     async with httpx.AsyncClient(base_url=config.url_core(), timeout=30) as client:
-        return (await client.get("/api/agenda", params={"da": da, "a": a})).json()
+        return (await client.get("/api/agenda", params=parametri)).json()
 
 
 @server.tool(annotations=AZIONE)

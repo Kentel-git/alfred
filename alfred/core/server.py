@@ -230,11 +230,18 @@ async def dati_meteo():
 
 
 @app.get("/api/agenda")
-async def eventi_agenda(da: str, a: str):
+async def eventi_agenda(da: str, a: str, calendari: str = ""):
+    """calendari: nomi separati da virgola, "tutti", o vuoto per quelli personali."""
     try:
         inizio = datetime.combine(date.fromisoformat(da), datetime.min.time()).astimezone()
         fine = datetime.combine(date.fromisoformat(a), datetime.min.time()).astimezone()
-        return {"eventi": await agenda.eventi(inizio, fine)}
+        richiesti = [c.strip() for c in calendari.split(",") if c.strip()] or None
+        consultati, altri = await agenda.scegli_calendari(richiesti)
+        return {
+            "eventi": await agenda.eventi(inizio, fine, richiesti),
+            "calendari_consultati": [c["nome"] for c in consultati],
+            "altri_calendari": [c["nome"] for c in altri],
+        }
     except agenda.AgendaNonPronta as errore:
         return {"errore": str(errore), "pronta": agenda.pronta()}
 

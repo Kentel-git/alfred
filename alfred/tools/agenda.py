@@ -158,8 +158,24 @@ async def calendari() -> list[dict]:
             for c in dati.get("items", [])]
 
 
-def _calendari_configurati() -> list[str] | None:
-    return config.carica().get("agenda", {}).get("calendari")
+def _i_miei_calendari() -> list[str]:
+    """Calendari "personali" da config (nomi o id); vuoto = tutti i visibili."""
+    return [c.lower() for c in config.carica().get("agenda", {}).get("calendari", [])]
+
+
+def _corrisponde(calendario: dict, nomi: list[str]) -> bool:
+    return calendario["id"].lower() in nomi or (calendario["nome"] or "").lower() in nomi
+
+
+async def scegli_calendari(richiesti: list[str] | None = None) -> tuple[list[dict], list[dict]]:
+    """(da consultare, altri). Senza richiesta: i calendari personali.
+    ["tutti"] = tutti i visibili; altrimenti nomi o id."""
+    visibili = [c for c in await calendari() if c["visibile"]]
+    nomi = [n.lower() for n in richiesti] if richiesti else _i_miei_calendari()
+    if not nomi or "tutti" in nomi:
+        return visibili, []
+    scelti = [c for c in visibili if _corrisponde(c, nomi)]
+    return scelti, [c for c in visibili if c not in scelti]
 
 
 def _evento(e: dict, calendario: str, nome_calendario: str) -> dict:
@@ -174,10 +190,9 @@ def _evento(e: dict, calendario: str, nome_calendario: str) -> dict:
     }
 
 
-async def eventi(da: datetime, a: datetime) -> list[dict]:
-    """Eventi tra due istanti, da tutti i calendari visibili (o quelli in config)."""
-    scelti = _calendari_configurati()
-    elenco = [c for c in await calendari() if (c["id"] in scelti if scelti else c["visibile"])]
+async def eventi(da: datetime, a: datetime, richiesti: list[str] | None = None) -> list[dict]:
+    """Eventi tra due istanti dai calendari personali (o da quelli richiesti)."""
+    elenco, _ = await scegli_calendari(richiesti)
     risultati = []
     for c in elenco:
         dati = await _chiama("GET", f"/calendars/{c['id']}/events", params={

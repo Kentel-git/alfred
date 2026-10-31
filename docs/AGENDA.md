@@ -21,10 +21,14 @@ gratuito, da creare una volta sola.
 Alfred chiede solo due permessi: gli **eventi** dei calendari e l'**elenco
 dei calendari**. Il token resta in `~/.local/state/alfred/google-token.json`.
 
-Per default Alfred legge i calendari visibili in Google Calendar; per
-sceglierli, in `config.toml`:
+Per default Alfred legge tutti i calendari visibili in Google Calendar. Per
+indicare i propri calendari **personali** (HUD, "cosa ho domani", domande sui
+propri impegni), in `config.toml`:
 
 ```toml
 [agenda]
-calendari = ["primary", "xxxx@group.calendar.google.com"]
+calendari = ["Lavoro", "Famiglia"]   # nomi come in Google Calendar, oppure id
 ```
+
+Gli altri calendari visibili restano consultabili: Alfred li legge solo
+quando vengono nominati ("cosa esce oggi sul calendario editoriale?").

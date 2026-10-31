@@ -4,10 +4,11 @@ import base64
 import hashlib
 import itertools
 import json
-import os
 import subprocess
 
 import websockets
+
+from alfred import config
 
 _contatore = itertools.count()
 
@@ -28,7 +29,7 @@ async def _richieste(config_obs: dict, richieste: list[tuple[str, dict | None]])
         ciao = json.loads(await ws.recv())["d"]
         identificazione = {"rpcVersion": 1, "eventSubscriptions": 0}
         if "authentication" in ciao:
-            password = os.environ.get("ALFRED_OBS_PASSWORD", "")
+            password = config.segreto("ALFRED_OBS_PASSWORD") or ""
             sfida, sale = ciao["authentication"]["challenge"], ciao["authentication"]["salt"]
             segreto = base64.b64encode(hashlib.sha256((password + sale).encode()).digest()).decode()
             identificazione["authentication"] = base64.b64encode(

@@ -20,7 +20,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from alfred import config
-from alfred.tools import gioco, obs
+from alfred.tools import gioco, obs, telegram
 
 log = logging.getLogger("alfred.azioni")
 SCADENZA_CONFERMA_S = 120
@@ -105,6 +105,18 @@ async def _cambia_scena(parametri: dict) -> dict:
     return {"ok": True, "messaggio": _una(f"Scena «{scelta}», signore.", f"Ecco «{scelta}», signore.")}
 
 
+async def _invia_telegram(parametri: dict) -> dict:
+    testo = (parametri.get("testo") or "").strip()
+    if not testo:
+        return {"ok": False, "messaggio": "Cosa desidera che le scriva, signore?"}
+    try:
+        await telegram.invia(testo)
+    except telegram.TelegramNonPronto as errore:
+        log.warning("Telegram: %s", errore)
+        return {"ok": False, "messaggio": "Telegram non è ancora collegato, signore: manca il bot, o non mi ha ancora scritto /start."}
+    return {"ok": True, "messaggio": _una("Messaggio inviato su Telegram, signore.", "Fatto, signore: lo troverà su Telegram.")}
+
+
 # --- Registro ----------------------------------------------------------------
 
 @dataclass
@@ -143,6 +155,7 @@ AZIONI = {a.nome: a for a in [
     Azione("riprendi_registrazione", "Riprende la registrazione in pausa in OBS.", "",
            _obs("ResumeRecord", None, lambda: "Riprendo a registrare, signore.",
                 "Non c'è una registrazione in pausa, signore.")),
+    Azione("invia_telegram", "Invia un messaggio Telegram a Pietro. Parametro: testo.", "", _invia_telegram),
     Azione("cambia_scena", "Cambia la scena di OBS. Parametro: scena (nome, anche approssimativo).", "", _cambia_scena),
 ]}
 

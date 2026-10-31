@@ -40,6 +40,14 @@ SCENA = re.compile(
 )
 
 
+# Il testo del messaggio va preso così com'è (non normalizzato).
+TELEGRAM = re.compile(
+    r"^\s*(?:alfred[\s,]+)?(?:mandami|inviami|scrivimi|mandami un messaggio|scrivimi un messaggio)"
+    r"\s+su\s+telegram\s*[:,]?\s*(?P<testo>.+)$",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
 def normalizza(testo: str) -> str:
     testo = unicodedata.normalize("NFKD", testo.lower())
     testo = "".join(c for c in testo if not unicodedata.combining(c))  # sì → si, modalità → modalita
@@ -51,6 +59,8 @@ def normalizza(testo: str) -> str:
 
 def riconosci(testo: str) -> tuple[str, dict] | None:
     """("conferma"|"annulla"|nome_azione, parametri) oppure None (→ cervello)."""
+    if m := TELEGRAM.match(testo):
+        return "invia_telegram", {"testo": m["testo"].strip()}
     t = normalizza(testo)
     if not t or len(t.split()) > MAX_PAROLE:
         return None

@@ -8,6 +8,7 @@ USO = """Uso: alfred <comando>
   finestra  apre la finestra di Alfred
   toggle    mostra o nasconde la finestra (per la scorciatoia)
   mcp       server MCP con gli strumenti (lo avvia il cervello)
+  telegram  collega la chat Telegram del bot di Alfred
 """
 
 
@@ -25,6 +26,12 @@ def main() -> None:
         from alfred.finestra import toggle
 
         toggle()
+    elif comando == "telegram":
+        import asyncio
+
+        from alfred.tools.telegram import collega
+
+        asyncio.run(collega())
     elif comando == "mcp":
         from alfred.mcp_server import avvia
 

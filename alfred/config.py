@@ -31,6 +31,18 @@ def carica() -> dict:
     return config
 
 
+def segreto(nome: str) -> str | None:
+    """Legge un segreto da secrets.env (riletto ogni volta: niente riavvii),
+    con le variabili d'ambiente come alternativa."""
+    file = CARTELLA_CONFIG / "secrets.env"
+    if file.exists():
+        for riga in file.read_text().splitlines():
+            chiave, uguale, valore = riga.strip().partition("=")
+            if uguale and chiave.strip() == nome and not chiave.startswith("#"):
+                return valore.strip().strip('"').strip("'")
+    return os.environ.get(nome)
+
+
 def url_core(config: dict | None = None) -> str:
     config = config or carica()
     return f"http://127.0.0.1:{config['generale']['porta']}"

@@ -92,6 +92,13 @@ async def registrazione(azione: str) -> dict:
 
 
 @server.tool(annotations=AZIONE)
+async def invia_telegram(testo: str) -> dict:
+    """Invia un messaggio Telegram a Pietro (solo a lui, tramite il bot di
+    Alfred). Utile per promemoria, appunti o cose da ritrovare sul telefono."""
+    return await _azione("invia_telegram", {"testo": testo})
+
+
+@server.tool(annotations=AZIONE)
 async def cambia_scena(scena: str) -> dict:
     """Cambia la scena di OBS. Il nome può essere approssimativo: viene
     confrontato con le scene esistenti (vedi stato_obs)."""

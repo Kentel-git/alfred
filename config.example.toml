@@ -42,8 +42,12 @@ austerita_settimana = 0.8
 austerita_sessione = 0.9
 
 [gioco]
-# Comando per la modalità gioco e nome del processo per capire se è già aperto.
-# comando = ["steam", "-silent", "steam://rungameid/<id>"]
+# Le app della modalità gioco: voce di menu (.desktop) o comando, e nome del
+# processo per non aprirle due volte. Esempio:
+#
+# [[gioco.app]]
+# nome = "Battle.net"
+# avvio = "battlenet.desktop"
 # processo = "Battle.net"
 
 [obs]

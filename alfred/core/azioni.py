@@ -33,17 +33,26 @@ def _una(*frasi: str) -> str:
 # --- Esecutori ---------------------------------------------------------------
 # Ognuno restituisce {"ok": bool, "messaggio": frase di Alfred, ...}.
 
+def _elenco(nomi: list[str]) -> str:
+    return nomi[0] if len(nomi) == 1 else ", ".join(nomi[:-1]) + " e " + nomi[-1]
+
+
 async def _modalita_gioco(_parametri: dict) -> dict:
     esito = gioco.avvia(config.carica().get("gioco", {}))
-    if esito["ok"]:
-        return {"ok": True, "messaggio": _una(
-            "Modalità gioco, signore. Battle.net è in arrivo e il resto lo sistema la casa.",
-            "Preparo il campo di battaglia, signore. Battle.net sarà da lei a momenti.",
-            "Modalità gioco avviata. Le auguro una caccia fruttuosa, signore.",
-        )}
-    if esito["motivo"] == "gia_in_corso":
-        return {"ok": False, "messaggio": "Battle.net è già aperto, signore. La battaglia la attende."}
-    return {"ok": False, "messaggio": "Temo che la modalità gioco non sia ancora configurata su questa macchina, signore."}
+    if not esito["configurata"]:
+        return {"ok": False, "messaggio": "Temo che la modalità gioco non sia ancora configurata su questa macchina, signore."}
+    aperte, gia = esito["aperte"], esito["gia_aperte"]
+    if not aperte:
+        return {"ok": False, "messaggio": f"{_elenco(gia)} {'è' if len(gia) == 1 else 'sono'} già aperti, signore. La battaglia la attende."}
+    frase = _una(
+        f"Modalità gioco, signore. {_elenco(aperte)} in arrivo.",
+        f"Preparo il campo di battaglia, signore: {_elenco(aperte)} a momenti.",
+    )
+    if "CurseForge" in aperte:
+        frase += " Dia un'occhiata agli addon prima di partire: un'interfaccia aggiornata è mezza vittoria."
+    elif gia:
+        frase += f" {_elenco(gia)} era già aperto."
+    return {"ok": True, "messaggio": frase}
 
 
 async def _apri_obs(_parametri: dict) -> dict:
@@ -108,7 +117,7 @@ class Azione:
 
 
 AZIONI = {a.nome: a for a in [
-    Azione("modalita_gioco", "Avvia la modalità gioco (Battle.net e World of Warcraft).", "", _modalita_gioco),
+    Azione("modalita_gioco", "Avvia la modalità gioco (apre Battle.net e CurseForge).", "", _modalita_gioco),
     Azione("apri_obs", "Apre OBS Studio.", "", _apri_obs),
     Azione(
         "avvia_diretta", "Avvia la diretta in OBS.", "Avvio la diretta, signore? Mi basta un sì.",

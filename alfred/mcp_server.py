@@ -53,8 +53,9 @@ async def _azione(nome: str, parametri: dict | None = None) -> dict:
 
 @server.tool(annotations=AZIONE)
 async def modalita_gioco() -> dict:
-    """Avvia la modalità gioco: apre Battle.net (e World of Warcraft); la
-    macchina prepara da sola schermi e prestazioni."""
+    """Avvia la modalità gioco: apre Battle.net e CurseForge (per controllare
+    gli addon); la macchina prepara da sola schermi e prestazioni. Il gioco
+    lo lancia Pietro da Battle.net."""
     return await _azione("modalita_gioco")
 
 

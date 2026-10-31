@@ -40,11 +40,6 @@
           <dt>Rete</dt><dd id="rete"></dd>
         </dl>
       </article>
-
-      <article class="riquadro in-arrivo">
-        <h2>L'agenda</h2>
-        <p class="tenue">Prenderò in mano la sua agenda nella fase 2.</p>
-      </article>
     </aside>
 
     <section class="riquadro conversazione">
@@ -57,6 +52,18 @@
       <form id="modulo" class="modulo" autocomplete="off">
         <input id="domanda" type="text" placeholder="Mi dica, signore…" spellcheck="true">
       </form>
+      <div id="riquadro-riserve" class="riserve" hidden>
+        <span class="etichetta">Le riserve</span>
+        <div class="riserva">
+          <span>Sessione <b id="riserva-sessione"></b></span>
+          <div class="barra"><i id="barra-sessione"></i></div>
+        </div>
+        <div class="riserva">
+          <span>Settimana <b id="riserva-settimana"></b></span>
+          <div class="barra"><i id="barra-settimana"></i></div>
+        </div>
+        <span id="riserve-note" class="nota"></span>
+      </div>
     </section>
   </main>
 

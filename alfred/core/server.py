@@ -28,7 +28,7 @@ from watchfiles import awatch
 
 from alfred import __version__, config
 from alfred.brain import FILE_PERSONALITA, FILE_SCHEDA
-from alfred.core import meteo, sistema
+from alfred.core import limiti, meteo, sistema
 from alfred.core.conversazione import Conversazione
 from alfred.tools import obs
 
@@ -38,6 +38,8 @@ CARTELLA_CODICE = CARTELLA_PROGETTO / "alfred"
 
 INTERVALLO_SISTEMA_S = 2
 INTERVALLO_METEO_S = 10 * 60
+INTERVALLO_LIMITI_S = 30 * 60
+LIMITI_VECCHI_S = 5 * 60
 
 # Cambia a ogni avvio: l'HUD lo usa per capire che il servizio è stato aggiornato.
 ID_AVVIO = uuid.uuid4().hex
@@ -89,6 +91,18 @@ async def _ciclo_meteo() -> None:
             await diffusore.invia(await _meteo())
 
 
+async def _aggiorna_limiti() -> None:
+    if await limiti.sonda():
+        await diffusore.invia(limiti.stato())
+
+
+async def _ciclo_limiti() -> None:
+    while True:
+        if diffusore.client and limiti.eta_s() > INTERVALLO_LIMITI_S:
+            await _aggiorna_limiti()
+        await asyncio.sleep(60)
+
+
 def _riavvia() -> None:
     log.info("codice modificato: mi riavvio")
     os.execv(sys.executable, [sys.executable, "-m", "alfred", "core"])
@@ -122,6 +136,7 @@ async def ciclo_di_vita(_app: FastAPI):
     compiti = [
         asyncio.create_task(_ciclo_sistema()),
         asyncio.create_task(_ciclo_meteo()),
+        asyncio.create_task(_ciclo_limiti()),
         asyncio.create_task(_osserva_file()),
     ]
     yield
@@ -142,6 +157,7 @@ async def canale(ws: WebSocket):
     await diffusore.invia({"tipo": "benvenuto", "avvio": ID_AVVIO, "dati": _stato()}, solo=ws)
     await diffusore.invia({"tipo": "sistema", "dati": sistema.leggi()}, solo=ws)
     await diffusore.invia(conversazione.stato(), solo=ws)
+    await diffusore.invia(limiti.stato(), solo=ws)
     await diffusore.invia(await _meteo(), solo=ws)
     try:
         while True:
@@ -151,6 +167,8 @@ async def canale(ws: WebSocket):
                     # La finestra è appena stata richiamata: dati freschi subito.
                     await diffusore.invia({"tipo": "sistema", "dati": sistema.leggi()}, solo=ws)
                     await diffusore.invia(await _meteo(), solo=ws)
+                    if limiti.eta_s() > LIMITI_VECCHI_S:
+                        asyncio.create_task(_aggiorna_limiti())
                 case "chat":
                     await conversazione.ricevi(str(messaggio.get("testo", "")))
                 case "nuova_conversazione":

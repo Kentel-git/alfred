@@ -6,6 +6,7 @@ from pathlib import Path
 
 CARTELLA_CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "alfred"
 FILE_CONFIG = CARTELLA_CONFIG / "config.toml"
+CARTELLA_STATO = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "alfred"
 CARTELLA_RUNTIME = Path(os.environ.get("XDG_RUNTIME_DIR", f"/tmp/alfred-{os.getuid()}")) / "alfred"
 
 PREDEFINITI = {

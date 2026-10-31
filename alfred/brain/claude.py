@@ -100,7 +100,8 @@ class CervelloClaude:
     async def chiedi(self, testo: str) -> AsyncIterator[dict]:
         """Manda un messaggio e restituisce gli eventi della risposta:
         {"tipo": "sessione", "id"}, {"tipo": "parziale", "testo"},
-        {"tipo": "strumento", "nome"}, {"tipo": "fine", "testo", "errore"}.
+        {"tipo": "strumento", "nome"}, {"tipo": "limiti", "dati"},
+        {"tipo": "fine", "testo", "errore", "token"}.
         """
         async with self._turno:
             for tentativo in range(2):
@@ -154,7 +155,13 @@ class CervelloClaude:
                 elif ev.get("type") == "message_start":
                     # Nuovo messaggio dopo l'uso di uno strumento: separa i testi.
                     yield {"tipo": "parziale", "testo": ""}
+            elif tipo == "rate_limit_event":
+                yield {"tipo": "limiti", "dati": e.get("rate_limit_info", {})}
             elif tipo == "result":
                 errore = e.get("result") if e.get("is_error") else None
-                yield {"tipo": "fine", "testo": e.get("result") or "", "errore": errore}
+                uso = e.get("usage") or {}
+                token = sum(uso.get(k, 0) for k in (
+                    "input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"
+                ))
+                yield {"tipo": "fine", "testo": e.get("result") or "", "errore": errore, "token": token}
                 return

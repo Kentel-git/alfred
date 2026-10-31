@@ -160,6 +160,23 @@ main {
 
 footer { text-align: center; font-size: 0.8rem; }
 
+.riserve {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.6rem;
+  margin-top: 0.9rem;
+  font-size: 0.8rem;
+  color: var(--tenue);
+}
+.riserve .etichetta { font-family: var(--serif); color: var(--ottone); font-size: 0.9rem; }
+.riserve b { font-weight: normal; color: var(--testo); }
+.riserva { flex: 1; min-width: 14rem; }
+.riserva .barra { margin-top: 0.25rem; }
+.nota { flex-basis: 100%; }
+.barra i.attenzione { background: #d9a07a; }
+.barra i.allarme { background: #d9645a; }
+
 /* Collegamento col servizio perso: l'HUD si attenua finché non torna. */
 body.scollegato main { opacity: 0.35; transition: opacity 0.4s; }
 body.scollegato .battuta::after { content: " (un attimo: ho perso il filo.)"; }

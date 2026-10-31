@@ -17,6 +17,7 @@ Ogni fase produce qualcosa di usabile da sola.
 - [x] server MCP con i primi strumenti in sola lettura (computer, meteo, OBS)
 - [x] memoria della conversazione (sopravvive ai riavvii, "nuova conversazione")
 - [x] riquadro di conversazione nell'HUD, risposte parola per parola
+- [x] "Le riserve": limiti di utilizzo di Claude (sessione e settimana) e consumo di Alfred nell'HUD
 - [ ] memoria a lungo termine: cose che Alfred impara su Pietro oltre la scheda
 
 ## Fase 2 — Alfred agisce

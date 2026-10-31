@@ -7,17 +7,15 @@ conversazione sopravvive ai riavvii del servizio e l'HUD la ritrova intatta.
 import asyncio
 import json
 import logging
-import os
 import time
 from collections.abc import Awaitable, Callable
 from datetime import datetime
-from pathlib import Path
 
 from alfred import config
 from alfred.brain.claude import CervelloClaude
-from alfred.core import meteo
+from alfred.config import CARTELLA_STATO
+from alfred.core import limiti, meteo
 
-CARTELLA_STATO = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "alfred"
 FILE_CONVERSAZIONE = CARTELLA_STATO / "conversazione.json"
 MAX_MESSAGGI = 100
 
@@ -93,8 +91,13 @@ class Conversazione:
                         await self._invia({"tipo": "risposta_strumento", "nome": evento["nome"]})
                     case "sessione":
                         self._salva()
+                    case "limiti":
+                        if limiti.aggiorna(evento["dati"]):
+                            await self._invia(limiti.stato())
                     case "fine":
                         risposta, errore = evento["testo"], evento["errore"]
+                        limiti.conta_messaggio(evento.get("token", 0))
+                        await self._invia(limiti.stato())
         except Exception as e:
             log.exception("il cervello si è inceppato")
             errore = str(e)

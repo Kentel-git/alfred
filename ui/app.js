@@ -102,6 +102,49 @@ function aggiornaStile() {
   }
 }
 
+// --- Le riserve (limiti di utilizzo di Claude) -------------------------------
+
+function quandoSiRinnova(secondi) {
+  const d = new Date(secondi * 1000);
+  const ora = d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  const oggi = new Date();
+  const domani = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate() + 1);
+  if (d.toDateString() === oggi.toDateString()) return `alle ${ora}`;
+  if (d.toDateString() === domani.toDateString()) return `domani alle ${ora}`;
+  return `${d.toLocaleDateString("it-IT", { weekday: "long" })} alle ${ora}`;
+}
+
+function mostraRiserva(nome, finestra) {
+  if (!finestra || finestra.uso == null) {
+    $(`riserva-${nome}`).textContent = "—";
+    return;
+  }
+  const percento = Math.round(finestra.uso * 100);
+  const rinnovo = finestra.rinnovo ? ` · si rinnova ${quandoSiRinnova(finestra.rinnovo)}` : "";
+  $(`riserva-${nome}`).textContent = `${percento}%${rinnovo}`;
+  const barra = $(`barra-${nome}`);
+  barra.style.width = `${Math.min(percento, 100)}%`;
+  barra.classList.toggle("attenzione", percento >= 75 && percento < 90);
+  barra.classList.toggle("allarme", percento >= 90 || finestra.stato === "rejected");
+}
+
+function mostraLimiti(m) {
+  if (!m.sessione && !m.settimana) return;
+  if ($("riquadro-riserve").hidden) {
+    // La striscia compare ora e accorcia la conversazione: si torna in fondo.
+    $("riquadro-riserve").hidden = false;
+    inFondo(true);
+  }
+  mostraRiserva("sessione", m.sessione);
+  mostraRiserva("settimana", m.settimana);
+  const minuti = Math.round((Date.now() / 1000 - m.aggiornato) / 60);
+  const eta = minuti < 1 ? "aggiornate ora" : `aggiornate ${minuti} min fa`;
+  const token = m.oggi.token >= 1000 ? `${Math.round(m.oggi.token / 1000)} mila token` : `${m.oggi.token} token`;
+  $("riserve-note").textContent = m.oggi.messaggi
+    ? `Alfred oggi: ${m.oggi.messaggi} risposte, ${token} · ${eta}`
+    : `Alfred oggi non ha ancora parlato · ${eta}`;
+}
+
 // --- Conversazione -----------------------------------------------------------
 
 const ETICHETTE_STRUMENTI = {
@@ -255,6 +298,9 @@ function collega() {
         break;
       case "meteo":
         mostraMeteo(m);
+        break;
+      case "limiti":
+        mostraLimiti(m);
         break;
       case "cronologia":
         mostraCronologia(m);

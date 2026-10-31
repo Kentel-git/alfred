@@ -30,8 +30,9 @@ Ogni fase produce qualcosa di usabile da sola.
 - [x] veglia: con l'alimentatore il computer non va in standby da solo mentre Alfred è attivo (DMS o logind); standby su richiesta con conferma
 
 ## Fase 3 — Alfred parla
-- [ ] parola di attivazione
-- [ ] trascrizione whisper.cpp
+- [x] ascolto a pulsante: Mod+Shift+A o microfono nell'HUD, fine frase con Silero, trascrizione faster-whisper small su CPU (~1,2 s)
+- [x] vocali di Telegram trascritti e trattati come messaggi
+- [ ] parola di attivazione "Alfred"
 - [ ] voce TTS
 - [ ] interruzione (si parla sopra ad Alfred e lui tace)
 

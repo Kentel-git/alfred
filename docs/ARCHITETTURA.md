@@ -61,9 +61,9 @@ impeccabile.
 - **tools/**: ogni azione è una funzione Python documentata, esposta a
   `claude -p` come **server MCP**. Gli stessi strumenti saranno usabili da un
   cervello locale.
-- **voice/**: parola di attivazione (openWakeWord), trascrizione (whisper.cpp),
-  sintesi vocale (Piper o Kokoro: si decide in fase 3, conta la qualità delle
-  voci italiane).
+- **voce/**: ascolto (pw-record, fine frase con Silero VAD, trascrizione
+  faster-whisper "small" sulla CPU: la GPU resta libera per giochi e dirette)
+  e sintesi vocale (Kokoro o Piper). Tutto in locale, zero riserve.
 
 ## Strumenti previsti
 

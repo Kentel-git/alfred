@@ -32,6 +32,7 @@ from alfred.brain import FILE_PERSONALITA, FILE_SCHEDA
 from alfred.core import limiti, meteo, sistema, telegram_ponte, veglia
 from alfred.core.azioni import agenda_per_hud
 from alfred.core.conversazione import Conversazione
+from alfred.voce import ascolto
 from alfred.tools import agenda, obs
 
 CARTELLA_PROGETTO = Path(__file__).resolve().parents[2]
@@ -160,6 +161,7 @@ async def ciclo_di_vita(_app: FastAPI):
         asyncio.create_task(_ciclo_regia()),
         asyncio.create_task(_ciclo_agenda()),
         asyncio.create_task(veglia.istanza().sorveglia(diffusore.invia)),
+        asyncio.create_task(ascolto.prepara()),
         asyncio.create_task(telegram_ponte.ciclo(conversazione)),
         asyncio.create_task(_osserva_file()),
     ]
@@ -205,6 +207,8 @@ async def canale(ws: WebSocket):
                 case "azione":
                     # Pulsanti dell'HUD: stessa strada dei comandi diretti.
                     await conversazione.azione_da_hud(str(messaggio.get("nome")), messaggio.get("parametri") or {})
+                case "ascolta":
+                    await conversazione.ascolta()
                 case "conferma_azione":
                     await conversazione.conferma_da_hud(bool(messaggio.get("si")), str(messaggio.get("id")))
     except (WebSocketDisconnect, RuntimeError):
@@ -253,6 +257,13 @@ async def eventi_agenda(da: str, a: str, calendari: str = ""):
 async def azione(nome: str, parametri: dict | None = None):
     """Usato dal cervello (strumenti MCP): le azioni sensibili restano in attesa di conferma."""
     return await conversazione.azioni.richiedi(nome, parametri or {})
+
+
+@app.post("/api/ascolta")
+async def ascolta():
+    """Scorciatoia da tastiera: apre il microfono per una frase (o lo chiude)."""
+    await conversazione.ascolta()
+    return {"ok": True}
 
 
 @app.get("/api/obs")

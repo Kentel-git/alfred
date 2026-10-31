@@ -6,6 +6,7 @@ DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
 BIN="$HOME/.local/bin"
 TASTO="${ALFRED_TASTO:-Mod+A}"
+TASTO_VOCE="${ALFRED_TASTO_VOCE:-Mod+Shift+A}"
 
 dire() { printf '\033[33m»\033[0m %s\n' "$*"; }
 errore() { printf '\033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
@@ -78,6 +79,7 @@ if [ -f "$NIRI" ]; then
 // Generato da installa.sh di Alfred: verrà sovrascritto. Non modificare.
 binds {
     $TASTO hotkey-overlay-title="Alfred" { spawn "$BIN/alfred" "toggle"; }
+    $TASTO_VOCE hotkey-overlay-title="Parla ad Alfred" { spawn "$BIN/alfred" "ascolta"; }
 }
 
 window-rule {
@@ -93,7 +95,7 @@ EOF
     if command -v niri >/dev/null && ! niri validate >/dev/null 2>&1; then
         errore "niri rifiuta la configurazione: controlla con 'niri validate'."
     fi
-    dire "Scorciatoia niri: $TASTO"
+    dire "Scorciatoie niri: $TASTO (finestra), $TASTO_VOCE (parla ad Alfred)"
 else
     dire "niri non trovato: associa a una scorciatoia il comando '$BIN/alfred toggle'."
 fi

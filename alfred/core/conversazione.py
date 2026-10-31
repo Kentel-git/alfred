@@ -18,6 +18,7 @@ from alfred.config import CARTELLA_STATO
 from alfred.core import comandi, limiti, meteo
 from alfred.core.azioni import Gestore, descrizione_per_riferire
 from alfred.tools import telegram
+from alfred.voce import ascolto
 
 FILE_CONVERSAZIONE = CARTELLA_STATO / "conversazione.json"
 MAX_MESSAGGI = 100
@@ -37,6 +38,8 @@ def _contesto(origine: str) -> str:
         parti.append(f"computer a {luogo}")
     if origine == "telegram":
         parti.append("ti scrive da Telegram, probabilmente lontano dal computer")
+    elif origine == "voce":
+        parti.append("ti parla a voce: la tua risposta sarà ascoltata, non letta")
     return "[" + " · ".join(parti) + "]"
 
 
@@ -66,6 +69,7 @@ class Conversazione:
         # Da dove arriva l'ultimo messaggio di Pietro ("hud" o "telegram"):
         # risposte ed esiti tornano lì.
         self._origine = "hud"
+        self._ascolto: ascolto.Ascolto | None = None
         # Ciò che è successo senza il cervello (comandi diretti, conferme):
         # glielo si racconta al messaggio successivo, così resta coerente.
         self._da_riferire: list[str] = []
@@ -135,15 +139,58 @@ class Conversazione:
         if a_telegram and self._origine == "telegram":
             await _a_telegram(testo)
 
+    # --- Voce -------------------------------------------------------------------
+
+    async def ascolta(self) -> None:
+        """Apre il microfono per una frase; se è già aperto, lo chiude."""
+        if self._ascolto:
+            self._ascolto.interrompi()
+            return
+        self._ascolto = ascolto.Ascolto()
+        asyncio.create_task(self._ascolta_frase(self._ascolto))
+
+    async def _ascolta_frase(self, sessione: "ascolto.Ascolto") -> None:
+        async def avvisa(stato: str) -> None:
+            await self._invia({"tipo": "ascolto", "stato": stato})
+
+        try:
+            audio = await sessione.frase(avvisa)
+            if audio is None:
+                await avvisa("niente")
+                return
+            await avvisa("trascrivo")
+            testo = await ascolto.trascrivi(audio)
+        except Exception as errore:
+            log.exception("ascolto non riuscito")
+            await self._invia({"tipo": "ascolto", "stato": "errore", "errore": str(errore)})
+            return
+        finally:
+            self._ascolto = None
+        await avvisa("fine")
+        if testo:
+            await self.ricevi(testo, origine="voce")
+        else:
+            await avvisa("niente")
+
+    async def vocale_telegram(self, percorso: str) -> None:
+        """Vocale ricevuto su Telegram: si trascrive e si tratta come un messaggio."""
+        testo = await ascolto.trascrivi(await ascolto.da_file(percorso))
+        if testo:
+            await self.ricevi(testo, origine="telegram")
+        else:
+            await _a_telegram("Perdoni, signore: nel vocale non sono riuscito a distinguere parole.")
+
     async def azione_da_hud(self, nome: str, parametri: dict) -> None:
         """Pulsanti dell'HUD."""
         self._origine = "hud"
+        self._ascolto: ascolto.Ascolto | None = None
         esito = await self.azioni.richiedi(nome, parametri)
         if not esito.get("in_attesa_di_conferma"):
             await self.annuncia(esito["messaggio"], esito)
 
     async def conferma_da_hud(self, si: bool, id_attesa: str) -> None:
         self._origine = "hud"
+        self._ascolto: ascolto.Ascolto | None = None
         if esito := await self.azioni.conferma(si, id_attesa):
             await self.annuncia(esito["messaggio"], esito)
 

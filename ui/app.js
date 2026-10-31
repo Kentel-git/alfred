@@ -305,6 +305,7 @@ function creaBolla(chi, testo = "", errore = false, modello, origine) {
   div.className = `messaggio ${chi}${errore ? " errore" : ""}`;
   etichettaModello(div, modello);
   if (origine === "telegram") div.dataset.origine = "da Telegram";
+  if (origine === "voce") div.dataset.origine = "a voce";
   div.textContent = testo;
   $("messaggi").querySelector(".vuoto")?.remove();
   $("messaggi").append(div);
@@ -397,6 +398,34 @@ $("nuova").addEventListener("click", () => {
   $("domanda").focus();
 });
 
+// --- Ascolto -------------------------------------------------------------------
+const TESTI_ASCOLTO = {
+  in_ascolto: "Alfred la ascolta",
+  trascrivo: "Alfred trascrive",
+};
+
+function mostraAscolto(m) {
+  const attivo = m.stato === "in_ascolto" || m.stato === "trascrivo";
+  $("microfono").classList.toggle("attivo", m.stato === "in_ascolto");
+  if (attivo) {
+    $("attesa").hidden = false;
+    $("attesa").textContent = TESTI_ASCOLTO[m.stato];
+  } else if (!timerAttesa || $("attesa").textContent.startsWith("Alfred la") || $("attesa").textContent.startsWith("Alfred tras")) {
+    $("attesa").hidden = true;
+  }
+  if (m.stato === "niente") {
+    $("attesa").hidden = false;
+    $("attesa").textContent = "Non ho sentito nulla, signore";
+    setTimeout(() => { if ($("attesa").textContent.startsWith("Non ho")) $("attesa").hidden = true; }, 2500);
+  }
+  if (m.stato === "errore") {
+    $("attesa").hidden = false;
+    $("attesa").textContent = `Il microfono fa i capricci: ${m.errore}`;
+  }
+}
+
+$("microfono").addEventListener("click", () => invia({ tipo: "ascolta" }));
+
 // Basta iniziare a scrivere, ovunque: il cursore va da solo nella casella.
 document.addEventListener("keydown", (evento) => {
   if (evento.target === $("domanda") || evento.ctrlKey || evento.altKey || evento.metaKey) return;
@@ -456,6 +485,9 @@ function collega() {
         break;
       case "veglia":
         mostraVeglia(m);
+        break;
+      case "ascolto":
+        mostraAscolto(m);
         break;
       case "agenda":
         mostraAgenda(m);

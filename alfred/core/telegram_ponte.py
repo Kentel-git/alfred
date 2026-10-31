@@ -7,7 +7,10 @@ collegata, collega quella di chi lo manda.
 
 import asyncio
 import logging
+import tempfile
+from pathlib import Path
 
+from alfred import config
 from alfred.tools import telegram
 
 log = logging.getLogger("alfred.telegram")
@@ -47,12 +50,20 @@ async def _gestisci(aggiornamento: dict, conversazione) -> None:
         log.warning("messaggio Telegram ignorato da una chat sconosciuta (%s)", chat["id"])
         return
 
+    vocale = messaggio.get("voice") or messaggio.get("audio")
     if testo.startswith("/start"):
         await telegram.invia("Sono qui, signore.")
     elif testo:
         await conversazione.ricevi(testo, origine="telegram")
+    elif vocale:
+        await telegram.sta_scrivendo()
+        config.CARTELLA_RUNTIME.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=config.CARTELLA_RUNTIME) as cartella:
+            percorso = Path(cartella) / "vocale"
+            await telegram.scarica(vocale["file_id"], percorso)
+            await conversazione.vocale_telegram(str(percorso))
     else:
-        await telegram.invia("Per ora leggo soltanto messaggi scritti, signore. Ad ascoltare imparerò presto.")
+        await telegram.invia("Temo di saper leggere solo testi e ascoltare vocali, signore.")
 
 
 async def ciclo(conversazione) -> None:

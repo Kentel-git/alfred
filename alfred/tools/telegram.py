@@ -82,6 +82,15 @@ async def invia(testo: str, conferma_id: str | None = None) -> None:
         await chiama("sendMessage", **parametri)
 
 
+async def scarica(file_id: str, destinazione) -> None:
+    """Scarica un file ricevuto (es. un vocale) dai server di Telegram."""
+    info = await chiama("getFile", file_id=file_id)
+    async with httpx.AsyncClient(timeout=60) as client:
+        risposta = await client.get(f"https://api.telegram.org/file/bot{token()}/{info['file_path']}")
+        risposta.raise_for_status()
+    destinazione.write_bytes(risposta.content)
+
+
 async def sta_scrivendo() -> None:
     chat = chat_collegata()
     if chat:

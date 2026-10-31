@@ -331,7 +331,24 @@ body.scollegato .battuta::after { content: " (un attimo: ho perso il filo.)"; }
 .attesa::after { content: "…"; animation: respiro 1.4s ease-in-out infinite; }
 @keyframes respiro { 50% { opacity: 0.2; } }
 
-.modulo { margin-top: 1rem; }
+.modulo { margin-top: 1rem; display: flex; gap: 0.6rem; }
+
+.microfono {
+  flex: none;
+  width: 3.2rem;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--bordo);
+  border-radius: 6px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  filter: grayscale(1);
+}
+.microfono:hover { border-color: var(--ottone); filter: none; }
+.microfono.attivo {
+  border-color: #e06a5a;
+  filter: none;
+  animation: respiro 1.2s ease-in-out infinite;
+}
 
 .modulo input {
   width: 100%;

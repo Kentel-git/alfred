@@ -18,7 +18,10 @@ from alfred.config import CARTELLA_STATO
 from alfred.core import comandi, limiti, meteo
 from alfred.core.azioni import Gestore, descrizione_per_riferire
 from alfred.tools import telegram
-from alfred.voce import ascolto
+import tempfile
+from pathlib import Path
+
+from alfred.voce import ascolto, parola
 
 FILE_CONVERSAZIONE = CARTELLA_STATO / "conversazione.json"
 MAX_MESSAGGI = 100
@@ -43,9 +46,15 @@ def _contesto(origine: str) -> str:
     return "[" + " · ".join(parti) + "]"
 
 
-async def _a_telegram(testo: str, conferma_id: str | None = None) -> None:
+async def _a_telegram(testo: str, conferma_id: str | None = None, vocale: bool = False) -> None:
     try:
-        await telegram.invia(testo, conferma_id)
+        if vocale and parola.disponibile():
+            config.CARTELLA_RUNTIME.mkdir(parents=True, exist_ok=True)
+            with tempfile.TemporaryDirectory(dir=config.CARTELLA_RUNTIME) as cartella:
+                percorso = await parola.in_vocale(testo, Path(cartella) / "risposta.ogg")
+                await telegram.invia_vocale(percorso, testo)
+        else:
+            await telegram.invia(testo, conferma_id)
     except Exception as errore:
         log.warning("risposta Telegram non inviata: %s", errore)
 
@@ -70,6 +79,8 @@ class Conversazione:
         # risposte ed esiti tornano lì.
         self._origine = "hud"
         self._ascolto: ascolto.Ascolto | None = None
+        self._discorso: parola.Discorso | None = None
+        self._vocale_telegram = False  # l'ultimo messaggio Telegram era un vocale
         # Ciò che è successo senza il cervello (comandi diretti, conferme):
         # glielo si racconta al messaggio successivo, così resta coerente.
         self._da_riferire: list[str] = []
@@ -98,12 +109,14 @@ class Conversazione:
         if messaggio["tipo"] == "conferma" and self._origine == "telegram":
             await _a_telegram(messaggio["domanda"], conferma_id=messaggio["id"])
 
-    async def ricevi(self, testo: str, origine: str = "hud") -> None:
+    async def ricevi(self, testo: str, origine: str = "hud", vocale: bool = False) -> None:
         """Messaggio di Pietro: lo mostra subito a tutti gli HUD e fa rispondere Alfred."""
         testo = testo.strip()
         if not testo:
             return
         self._origine = origine
+        if origine == "telegram":
+            self._vocale_telegram = vocale
         domanda = {"chi": "utente", "testo": testo, "quando": time.time()}
         if origine != "hud":
             domanda["origine"] = origine
@@ -137,12 +150,42 @@ class Conversazione:
             self._da_riferire.append(descrizione_per_riferire(esito))
         await self._invia({"tipo": "messaggio", "messaggio": messaggio})
         if a_telegram and self._origine == "telegram":
-            await _a_telegram(testo)
+            await _a_telegram(testo, vocale=self._vocale_telegram)
+        elif self._origine == "voce" and (discorso := self._parla()):
+            discorso.aggiungi(testo)
+            discorso.fine()
 
     # --- Voce -------------------------------------------------------------------
 
+    def _parla(self) -> "parola.Discorso | None":
+        """Nuovo discorso ad alta voce (zittendo quello in corso), se la voce è attiva."""
+        if not (parola.disponibile() and config.carica().get("voce", {}).get("attiva", True)):
+            return None
+        self.zittisci()
+        discorso = parola.Discorso()
+        self._discorso = discorso
+
+        async def segui():
+            await self._invia({"tipo": "parola", "stato": "parla"})
+            await discorso.compito
+            if self._discorso is discorso:
+                self._discorso = None
+                await self._invia({"tipo": "parola", "stato": "fine"})
+        asyncio.create_task(segui())
+        return discorso
+
+    def zittisci(self) -> bool:
+        if self._discorso:
+            self._discorso.zittisci()
+            self._discorso = None
+            return True
+        return False
+
     async def ascolta(self) -> None:
-        """Apre il microfono per una frase; se è già aperto, lo chiude."""
+        """Apre il microfono per una frase; se è già aperto, lo chiude.
+        Se Alfred sta parlando, prima lo zittisce."""
+        if self.zittisci():
+            await self._invia({"tipo": "parola", "stato": "fine"})
         if self._ascolto:
             self._ascolto.interrompi()
             return
@@ -176,7 +219,8 @@ class Conversazione:
         """Vocale ricevuto su Telegram: si trascrive e si tratta come un messaggio."""
         testo = await ascolto.trascrivi(await ascolto.da_file(percorso))
         if testo:
-            await self.ricevi(testo, origine="telegram")
+            self._vocale_telegram = True  # si risponde con un vocale
+            await self.ricevi(testo, origine="telegram", vocale=True)
         else:
             await _a_telegram("Perdoni, signore: nel vocale non sono riuscito a distinguere parole.")
 
@@ -184,6 +228,8 @@ class Conversazione:
         """Pulsanti dell'HUD."""
         self._origine = "hud"
         self._ascolto: ascolto.Ascolto | None = None
+        self._discorso: parola.Discorso | None = None
+        self._vocale_telegram = False  # l'ultimo messaggio Telegram era un vocale
         esito = await self.azioni.richiedi(nome, parametri)
         if not esito.get("in_attesa_di_conferma"):
             await self.annuncia(esito["messaggio"], esito)
@@ -191,6 +237,8 @@ class Conversazione:
     async def conferma_da_hud(self, si: bool, id_attesa: str) -> None:
         self._origine = "hud"
         self._ascolto: ascolto.Ascolto | None = None
+        self._discorso: parola.Discorso | None = None
+        self._vocale_telegram = False  # l'ultimo messaggio Telegram era un vocale
         if esito := await self.azioni.conferma(si, id_attesa):
             await self.annuncia(esito["messaggio"], esito)
 
@@ -211,10 +259,14 @@ class Conversazione:
             self._salva()
             await self._invia({"tipo": "risposta_fine", "messaggio": messaggio})
             if origine == "telegram":
-                await _a_telegram(messaggio["testo"])
+                await _a_telegram(messaggio["testo"], vocale=self._vocale_telegram)
+            elif origine == "voce" and (discorso := self._parla()):
+                discorso.aggiungi(messaggio["testo"])
+                discorso.fine()
             return
 
         scrivendo = asyncio.create_task(self._sta_scrivendo()) if origine == "telegram" else None
+        discorso = self._parla() if origine == "voce" else None
         self.occupato = True
         await self._invia({"tipo": "risposta_inizio", "modello": modello})
         risposta, errore = "", None
@@ -228,6 +280,8 @@ class Conversazione:
                 match evento["tipo"]:
                     case "parziale":
                         await self._invia({"tipo": "risposta_parziale", "testo": evento["testo"]})
+                        if discorso:
+                            discorso.aggiungi(evento["testo"] or " ")
                     case "strumento":
                         await self._invia({"tipo": "risposta_strumento", "nome": evento["nome"]})
                     case "sessione":
@@ -256,9 +310,13 @@ class Conversazione:
         self.messaggi.append(messaggio)
         self._salva()
         await self._invia({"tipo": "risposta_fine", "messaggio": messaggio})
+        if discorso:
+            if not risposta.strip():
+                discorso.aggiungi(messaggio["testo"])
+            discorso.fine()
         if scrivendo:
             scrivendo.cancel()
-            await _a_telegram(messaggio["testo"])
+            await _a_telegram(messaggio["testo"], vocale=self._vocale_telegram)
 
     @staticmethod
     async def _sta_scrivendo() -> None:

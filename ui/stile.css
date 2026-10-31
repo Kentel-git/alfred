@@ -344,6 +344,7 @@ body.scollegato .battuta::after { content: " (un attimo: ho perso il filo.)"; }
   filter: grayscale(1);
 }
 .microfono:hover { border-color: var(--ottone); filter: none; }
+.microfono.parla { border-color: var(--ottone); filter: none; }
 .microfono.attivo {
   border-color: #e06a5a;
   filter: none;

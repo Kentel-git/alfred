@@ -32,7 +32,7 @@ from alfred.brain import FILE_PERSONALITA, FILE_SCHEDA
 from alfred.core import limiti, meteo, sistema, telegram_ponte, veglia
 from alfred.core.azioni import agenda_per_hud
 from alfred.core.conversazione import Conversazione
-from alfred.voce import ascolto
+from alfred.voce import ascolto, parola
 from alfred.tools import agenda, obs
 
 CARTELLA_PROGETTO = Path(__file__).resolve().parents[2]
@@ -162,6 +162,7 @@ async def ciclo_di_vita(_app: FastAPI):
         asyncio.create_task(_ciclo_agenda()),
         asyncio.create_task(veglia.istanza().sorveglia(diffusore.invia)),
         asyncio.create_task(ascolto.prepara()),
+        asyncio.create_task(parola.prepara()),
         asyncio.create_task(telegram_ponte.ciclo(conversazione)),
         asyncio.create_task(_osserva_file()),
     ]

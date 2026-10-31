@@ -82,6 +82,25 @@ async def invia(testo: str, conferma_id: str | None = None) -> None:
         await chiama("sendMessage", **parametri)
 
 
+async def invia_vocale(percorso, didascalia: str = "") -> None:
+    """Un vocale (Ogg/Opus) con il testo come didascalia, o a parte se lungo."""
+    chat = chat_collegata()
+    if not chat:
+        raise TelegramNonPronto("chat non collegata: scrivere /start al bot")
+    chiave = token()
+    corta = didascalia if len(didascalia) <= 1000 else ""
+    async with httpx.AsyncClient(timeout=60) as client:
+        risposta = await client.post(
+            API.format(token=chiave, metodo="sendVoice"),
+            data={"chat_id": str(chat), "caption": corta},
+            files={"voice": ("alfred.ogg", percorso.read_bytes(), "audio/ogg")},
+        )
+    if not risposta.json().get("ok"):
+        raise TelegramNonPronto(risposta.json().get("description", "vocale non inviato"))
+    if didascalia and not corta:
+        await invia(didascalia)
+
+
 async def scarica(file_id: str, destinazione) -> None:
     """Scarica un file ricevuto (es. un vocale) dai server di Telegram."""
     info = await chiama("getFile", file_id=file_id)

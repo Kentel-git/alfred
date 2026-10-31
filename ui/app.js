@@ -489,6 +489,12 @@ function collega() {
       case "ascolto":
         mostraAscolto(m);
         break;
+      case "parola":
+        $("microfono").title = m.stato === "parla"
+          ? "Interrompi Alfred e parla (Mod+Shift+A)"
+          : "Parla ad Alfred (Mod+Shift+A)";
+        $("microfono").classList.toggle("parla", m.stato === "parla");
+        break;
       case "agenda":
         mostraAgenda(m);
         break;

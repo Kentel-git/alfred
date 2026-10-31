@@ -33,8 +33,10 @@ Ogni fase produce qualcosa di usabile da sola.
 - [x] ascolto a pulsante: Mod+Shift+A o microfono nell'HUD, fine frase con Silero, trascrizione faster-whisper small su CPU (~1,2 s)
 - [x] vocali di Telegram trascritti e trattati come messaggi
 - [ ] parola di attivazione "Alfred"
-- [ ] voce TTS
-- [ ] interruzione (si parla sopra ad Alfred e lui tace)
+- [x] voce: Kokoro, miscela Nicola 70% + Fable 30% a velocità 0,92, domande con intonazione corretta (pyworld), frase per frase mentre il cervello scrive
+- [x] risposta a voce quando si parla a voce; vocale in risposta ai vocali di Telegram
+- [x] interruzione con Mod+Shift+A o il microfono (zittisce e ascolta)
+- [ ] interruzione a voce (parlare sopra ad Alfred): serve la cancellazione dell'eco
 
 ## Fase 4 — Alfred di sua iniziativa
 - [ ] memoria a lungo termine: cose che Alfred impara su Pietro oltre la scheda

@@ -32,6 +32,27 @@ fi
 dire "Installo le dipendenze…"
 "$DIR/.venv/bin/pip" install -q --disable-pip-version-check -r "$DIR/requirements.txt"
 
+# --- Voce --------------------------------------------------------------------
+for programma in pw-record pw-play ffmpeg; do
+    command -v "$programma" >/dev/null || dire "Attenzione: manca $programma (serve per ascolto e voce)."
+done
+VOCE="${XDG_DATA_HOME:-$HOME/.local/share}/alfred/voce"
+mkdir -p "$VOCE"
+for file in kokoro-v1.0.onnx voices-v1.0.bin; do
+    if [ ! -f "$VOCE/$file" ]; then
+        dire "Scarico la voce ($file)…"
+        curl -L --fail --progress-bar -o "$VOCE/$file.parziale" \
+            "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/$file"
+        mv "$VOCE/$file.parziale" "$VOCE/$file"
+    fi
+done
+# Facoltativo: intonazione corretta delle domande (pyworld va compilato).
+if ! "$DIR/.venv/bin/python" -c "import pyworld" 2>/dev/null; then
+    "$DIR/.venv/bin/pip" install -q --disable-pip-version-check "setuptools<81" cython \
+        && "$DIR/.venv/bin/pip" install -q --disable-pip-version-check --no-build-isolation pyworld \
+        || dire "pyworld non installato: le domande avranno l'intonazione standard di Kokoro."
+fi
+
 # --- Comando alfred ----------------------------------------------------------
 chmod +x "$DIR/bin/alfred"
 mkdir -p "$BIN"

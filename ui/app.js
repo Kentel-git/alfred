@@ -170,9 +170,11 @@ function mostraAgenda(m) {
     return;
   }
   const perGiorno = new Map();
+  const oggi = new Date(); oggi.setHours(0, 0, 0, 0);
   for (const e of m.eventi) {
     const inizio = new Date(e.tutto_il_giorno ? `${e.inizio}T00:00` : e.inizio);
-    const chiave = new Date(inizio); chiave.setHours(0, 0, 0, 0);
+    // Gli eventi cominciati nei giorni scorsi e ancora in corso stanno sotto "Oggi".
+    const chiave = new Date(Math.max(inizio, oggi)); chiave.setHours(0, 0, 0, 0);
     if (!perGiorno.has(+chiave)) perGiorno.set(+chiave, []);
     perGiorno.get(+chiave).push({ ...e, inizioData: inizio });
   }

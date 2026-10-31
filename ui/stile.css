@@ -281,6 +281,15 @@ body.scollegato .battuta::after { content: " (un attimo: ho perso il filo.)"; }
 
 .messaggio.errore { color: #d9a07a; }
 
+.messaggio.utente[data-origine]::after {
+  content: attr(data-origine);
+  display: block;
+  font-size: 0.7rem;
+  color: var(--tenue);
+  margin-top: 0.2rem;
+  text-align: right;
+}
+
 .strumento {
   display: block;
   font-family: var(--sans);

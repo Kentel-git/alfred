@@ -28,7 +28,7 @@ from watchfiles import awatch
 
 from alfred import __version__, config
 from alfred.brain import FILE_PERSONALITA, FILE_SCHEDA
-from alfred.core import limiti, meteo, sistema
+from alfred.core import limiti, meteo, sistema, telegram_ponte
 from alfred.core.conversazione import Conversazione
 from alfred.tools import obs
 
@@ -147,6 +147,7 @@ async def ciclo_di_vita(_app: FastAPI):
         asyncio.create_task(_ciclo_meteo()),
         asyncio.create_task(_ciclo_limiti()),
         asyncio.create_task(_ciclo_regia()),
+        asyncio.create_task(telegram_ponte.ciclo(conversazione)),
         asyncio.create_task(_osserva_file()),
     ]
     yield
@@ -187,13 +188,9 @@ async def canale(ws: WebSocket):
                     await conversazione.nuova()
                 case "azione":
                     # Pulsanti dell'HUD: stessa strada dei comandi diretti.
-                    esito = await conversazione.azioni.richiedi(
-                        str(messaggio.get("nome")), messaggio.get("parametri") or {}
-                    )
-                    if not esito.get("in_attesa_di_conferma"):
-                        await conversazione.annuncia(esito["messaggio"], esito)
+                    await conversazione.azione_da_hud(str(messaggio.get("nome")), messaggio.get("parametri") or {})
                 case "conferma_azione":
-                    await conversazione.azioni.conferma_da_hud(bool(messaggio.get("si")), str(messaggio.get("id")))
+                    await conversazione.conferma_da_hud(bool(messaggio.get("si")), str(messaggio.get("id")))
     except (WebSocketDisconnect, RuntimeError):
         # RuntimeError: il client se n'è andato mentre gli scrivevamo.
         pass

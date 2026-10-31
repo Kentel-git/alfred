@@ -163,9 +163,8 @@ AZIONI = {a.nome: a for a in [
 class Gestore:
     """Esegue le azioni e custodisce quella in attesa di conferma."""
 
-    def __init__(self, invia: Callable[[dict], Awaitable[None]], annuncia: Callable[[str, dict], Awaitable[None]]):
-        self._invia = invia  # messaggi agli HUD
-        self._annuncia = annuncia  # esito come messaggio di Alfred nella conversazione
+    def __init__(self, invia: Callable[[dict], Awaitable[None]]):
+        self._invia = invia  # richieste di conferma agli HUD (e a Telegram)
         self.in_attesa: dict | None = None
 
     def _attesa_valida(self) -> dict | None:
@@ -208,11 +207,6 @@ class Gestore:
             return {"ok": True, "azione": attesa["nome"], "annullata": True,
                     "messaggio": _una("Come non detto, signore.", "Lascio stare, signore.")}
         return await self._esegui(AZIONI[attesa["nome"]], attesa["parametri"])
-
-    async def conferma_da_hud(self, si: bool, id_attesa: str) -> None:
-        esito = await self.conferma(si, id_attesa)
-        if esito:
-            await self._annuncia(esito["messaggio"], esito)
 
     def stato_attesa(self) -> dict | None:
         attesa = self._attesa_valida()

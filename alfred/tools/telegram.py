@@ -1,8 +1,8 @@
-"""Telegram: Alfred scrive a Pietro tramite un bot dedicato (Bot API ufficiale).
+"""Telegram: Pietro e Alfred si scrivono tramite un bot dedicato (Bot API).
 
 Il bot si crea con @BotFather; il token va in secrets.env come
-ALFRED_TELEGRAM_TOKEN. Poi `alfred telegram` collega la chat: si scrive /start
-al bot e Alfred memorizza a chi deve scrivere. Il bot scrive solo a quella chat.
+ALFRED_TELEGRAM_TOKEN. Il primo /start ricevuto collega la chat del
+proprietario: da quel momento il bot parla solo con lei e ignora chiunque altro.
 """
 
 import json
@@ -11,60 +11,78 @@ import httpx
 
 from alfred import config
 
-FILE_CHAT = config.CARTELLA_STATO / "telegram.json"
+FILE_STATO = config.CARTELLA_STATO / "telegram.json"
 API = "https://api.telegram.org/bot{token}/{metodo}"
+MAX_LUNGHEZZA = 4000  # Telegram accetta fino a 4096 caratteri per messaggio
 
 
 class TelegramNonPronto(Exception):
     pass
 
 
-def _token() -> str:
-    token = config.segreto("ALFRED_TELEGRAM_TOKEN")
-    if not token:
-        raise TelegramNonPronto("manca ALFRED_TELEGRAM_TOKEN in secrets.env")
-    return token
+def token() -> str | None:
+    return config.segreto("ALFRED_TELEGRAM_TOKEN")
+
+
+def _stato() -> dict:
+    try:
+        return json.loads(FILE_STATO.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def _salva_stato(**valori) -> None:
+    stato = _stato() | valori
+    config.CARTELLA_STATO.mkdir(parents=True, exist_ok=True)
+    FILE_STATO.write_text(json.dumps(stato))
 
 
 def chat_collegata() -> int | None:
-    try:
-        return json.loads(FILE_CHAT.read_text())["chat_id"]
-    except (OSError, ValueError, KeyError):
-        return None
+    return _stato().get("chat_id")
 
 
-async def _chiama(metodo: str, **parametri) -> dict:
-    async with httpx.AsyncClient(timeout=40) as client:
-        risposta = await client.post(API.format(token=_token(), metodo=metodo), json=parametri)
+def collega_chat(chat: dict) -> None:
+    _salva_stato(chat_id=chat["id"], nome=chat.get("first_name"))
+
+
+def ultimo_aggiornamento() -> int:
+    return _stato().get("offset", 0)
+
+
+def segna_letti(offset: int) -> None:
+    _salva_stato(offset=offset)
+
+
+async def chiama(metodo: str, attesa_http: float = 40, **parametri) -> dict | list | bool:
+    """Chiama un metodo della Bot API. I parametri vanno a Telegram così come sono."""
+    chiave = token()
+    if not chiave:
+        raise TelegramNonPronto("manca ALFRED_TELEGRAM_TOKEN in secrets.env")
+    async with httpx.AsyncClient(timeout=attesa_http) as client:
+        risposta = await client.post(API.format(token=chiave, metodo=metodo), json=parametri)
         dati = risposta.json()
     if not dati.get("ok"):
         raise TelegramNonPronto(dati.get("description", "errore sconosciuto"))
     return dati["result"]
 
 
-async def invia(testo: str) -> None:
+async def invia(testo: str, conferma_id: str | None = None) -> None:
+    """Scrive a Pietro. Con conferma_id aggiunge i pulsanti Sì / No."""
     chat = chat_collegata()
     if not chat:
-        raise TelegramNonPronto("chat non collegata: eseguire `alfred telegram`")
-    await _chiama("sendMessage", chat_id=chat, text=testo)
+        raise TelegramNonPronto("chat non collegata: scrivere /start al bot")
+    pezzi = [testo[i:i + MAX_LUNGHEZZA] for i in range(0, len(testo), MAX_LUNGHEZZA)] or [""]
+    for i, pezzo in enumerate(pezzi):
+        parametri = {"chat_id": chat, "text": pezzo}
+        if conferma_id and i == len(pezzi) - 1:
+            parametri["reply_markup"] = {"inline_keyboard": [[
+                {"text": "Sì", "callback_data": f"conferma:{conferma_id}:1"},
+                {"text": "No", "callback_data": f"conferma:{conferma_id}:0"},
+            ]]}
+        await chiama("sendMessage", **parametri)
 
 
-async def collega() -> None:
-    """Aspetta il /start del proprietario e memorizza la sua chat."""
-    bot = await _chiama("getMe")
-    print(f"Bot: @{bot['username']}. Scrivigli /start da Telegram (attendo 2 minuti)…")
-    ultimo = 0
-    for _ in range(4):
-        for aggiornamento in await _chiama("getUpdates", offset=ultimo, timeout=30):
-            ultimo = aggiornamento["update_id"] + 1
-            messaggio = aggiornamento.get("message") or {}
-            if (messaggio.get("text") or "").startswith("/start"):
-                chat = messaggio["chat"]
-                config.CARTELLA_STATO.mkdir(parents=True, exist_ok=True)
-                FILE_CHAT.write_text(json.dumps({"chat_id": chat["id"], "nome": chat.get("first_name")}))
-                await _chiama("getUpdates", offset=ultimo)  # segna come letti
-                await _chiama("sendMessage", chat_id=chat["id"],
-                              text="Buonasera, signore. Da questo momento potrò scriverle anche qui.")
-                print(f"Collegato a {chat.get('first_name')} (chat {chat['id']}).")
-                return
-    print("Nessun /start ricevuto: riprova.")
+async def sta_scrivendo() -> None:
+    chat = chat_collegata()
+    if chat:
+        await chiama("sendChatAction", chat_id=chat, action="typing")

@@ -22,7 +22,7 @@ Ogni fase produce qualcosa di usabile da sola.
 
 ## Fase 2 — Alfred agisce
 - [x] comandi diretti a costo zero: frasi comuni riconosciute in locale, senza modello
-- [x] Telegram: bot dedicato, `alfred telegram` per collegare la chat, "mandami su telegram …" a costo zero (da collegare)
+- [x] Telegram: bot dedicato, conversazione completa da Telegram (stessa dell'HUD), conferme con pulsanti, "mandami su telegram …" a costo zero; chat collegata al primo /start (da provare col bot vero)
 - [ ] agenda: lettura, creazione e modifica di eventi
 - [x] modalità gioco → Battle.net (comando in config; da provare dal vivo)
 - [x] OBS: apertura, scene, diretta, registrazione; riquadro "La regia" nell'HUD

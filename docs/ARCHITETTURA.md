@@ -70,7 +70,7 @@ impeccabile.
 | Strumento | Come | Note |
 |---|---|---|
 | Agenda | Da decidere in fase 2: CalDAV/Google Calendar API (libero, portabile) | |
-| Telegram | Bot API ufficiale (bot personale di Alfred) | Gratis, nessuna libreria proprietaria |
+| Telegram | Bot API ufficiale (bot personale di Alfred), long polling | Conversazione completa da Telegram; risponde solo alla chat collegata al primo /start |
 | Modalità gioco | Lancia un comando configurabile | Qui: `steam://rungameid/…` di Battle.net, che passa già da `modalita-gioco` |
 | OBS | obs-websocket v5 (porta 4455) | Scene, avvio/stop live e registrazione, stato |
 

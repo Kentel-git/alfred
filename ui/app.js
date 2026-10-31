@@ -230,10 +230,11 @@ function etichettaModello(bolla, modello) {
   bolla.dataset.modello = modello ? modello : "senza consumare riserve";
 }
 
-function creaBolla(chi, testo = "", errore = false, modello) {
+function creaBolla(chi, testo = "", errore = false, modello, origine) {
   const div = document.createElement("div");
   div.className = `messaggio ${chi}${errore ? " errore" : ""}`;
   etichettaModello(div, modello);
+  if (origine === "telegram") div.dataset.origine = "da Telegram";
   div.textContent = testo;
   $("messaggi").querySelector(".vuoto")?.remove();
   $("messaggi").append(div);
@@ -250,7 +251,7 @@ function mostraCronologia(m) {
     p.textContent = "Sono a sua disposizione.";
     $("messaggi").append(p);
   }
-  for (const msg of m.messaggi) creaBolla(msg.chi, msg.testo, !!msg.errore, msg.modello);
+  for (const msg of m.messaggi) creaBolla(msg.chi, msg.testo, !!msg.errore, msg.modello, msg.origine);
   if (m.occupato) iniziaAttesa();
   else fineAttesa();
   inFondo(true);
@@ -375,7 +376,7 @@ function collega() {
         mostraCronologia(m);
         break;
       case "messaggio":
-        creaBolla(m.messaggio.chi, m.messaggio.testo, !!m.messaggio.errore, m.messaggio.modello);
+        creaBolla(m.messaggio.chi, m.messaggio.testo, !!m.messaggio.errore, m.messaggio.modello, m.messaggio.origine);
         break;
       case "conferma":
         mostraConferma(m);

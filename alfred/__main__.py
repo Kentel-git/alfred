@@ -8,6 +8,7 @@ USO = """Uso: alfred <comando>
   finestra  apre la finestra di Alfred
   toggle    mostra o nasconde la finestra (per la scorciatoia)
   mcp       server MCP con gli strumenti (lo avvia il cervello)
+  google    collega l'agenda di Google Calendar (apre il browser)
 """
 
 
@@ -25,6 +26,10 @@ def main() -> None:
         from alfred.finestra import toggle
 
         toggle()
+    elif comando == "google":
+        from alfred.tools.agenda import autorizza
+
+        autorizza()
     elif comando == "mcp":
         from alfred.mcp_server import avvia
 

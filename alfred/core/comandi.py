@@ -35,6 +35,15 @@ COMANDI: list[tuple[re.Pattern, str]] = [
     (re.compile(rf"^(?:metti\s+in\s+pausa|pausa)\s+{REGISTRAZIONE}$"), "pausa_registrazione"),
     (re.compile(rf"^riprendi\s+{REGISTRAZIONE}$|^riprendi\s+a\s+registrare$"), "riprendi_registrazione"),
 ]
+GIORNO = r"(?P<giorno>oggi|domani|dopodomani|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica)"
+AGENDA = [re.compile(schema) for schema in (
+    rf"^(?:cosa|che cosa|che impegni|quali impegni)\s+ho\s+(?:in\s+agenda\s+)?(?:per\s+)?{GIORNO}$",
+    rf"^(?:l\s+)?(?:agenda|impegni)\s+(?:di|per)\s+{GIORNO}$",
+    rf"^{GIORNO}\s+(?:cosa|che)\s+(?:ho|impegni ho)$",
+    r"^(?:cosa ho in agenda|che impegni ho|agenda|impegni)$",
+)]
+GIORNI_ACCENTATI = {"lunedi": "lunedì", "martedi": "martedì", "mercoledi": "mercoledì",
+                    "giovedi": "giovedì", "venerdi": "venerdì"}
 SCENA = re.compile(
     r"^(?:passa\s+(?:alla|a)|vai\s+(?:alla|a)|metti\s+(?:la|il)?|cambia\s+scena\s+(?:in|a)?|scena)\s*(?:scena\s+)?(?P<scena>.+)$"
 )
@@ -71,6 +80,10 @@ def riconosci(testo: str) -> tuple[str, dict] | None:
     for schema, azione in COMANDI:
         if schema.match(t):
             return azione, {}
+    for schema in AGENDA:
+        if m := schema.match(t):
+            giorno = m.groupdict().get("giorno") or "oggi"
+            return "leggi_agenda", {"giorno": GIORNI_ACCENTATI.get(giorno, giorno)}
     if m := SCENA.match(t):
         return "cambia_scena", {"scena": m["scena"]}
     return None

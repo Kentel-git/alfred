@@ -195,6 +195,21 @@ footer { text-align: center; font-size: 0.8rem; }
 body.scollegato main { opacity: 0.35; transition: opacity 0.4s; }
 body.scollegato .battuta::after { content: " (un attimo: ho perso il filo.)"; }
 
+/* --- Agenda ----------------------------------------------------------------- */
+.agenda { display: flex; flex-direction: column; gap: 0.9rem; }
+.agenda h3 {
+  margin: 0 0 0.35rem;
+  font-weight: normal;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ottone);
+}
+.agenda ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
+.agenda li { display: flex; gap: 0.9rem; }
+.agenda .orario { color: var(--tenue); min-width: 3.2rem; font-variant-numeric: tabular-nums; }
+.agenda .passato { opacity: 0.45; }
+
 /* --- Pulsanti e regia ---------------------------------------------------- */
 .pulsante {
   background: rgba(255, 255, 255, 0.04);

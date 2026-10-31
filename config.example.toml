@@ -57,3 +57,7 @@ porta = 4455
 # Se il server ha la password: ALFRED_OBS_PASSWORD in secrets.env.
 # Comando per aprire OBS, es. ["obs"] oppure ["flatpak", "run", "com.obsproject.Studio"]
 comando_avvio = ["obs"]
+
+[agenda]
+# Google Calendar: vedi docs/AGENDA.md. Per default i calendari visibili;
+# per sceglierli: calendari = ["primary", "…@group.calendar.google.com"]

@@ -19,8 +19,11 @@ import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
+from datetime import date, datetime, timedelta
+
 from alfred import config
-from alfred.tools import gioco, obs, telegram
+from alfred.core import parole
+from alfred.tools import agenda, gioco, obs, telegram
 
 log = logging.getLogger("alfred.azioni")
 SCADENZA_CONFERMA_S = 120
@@ -117,13 +120,96 @@ async def _invia_telegram(parametri: dict) -> dict:
     return {"ok": True, "messaggio": _una("Messaggio inviato su Telegram, signore.", "Fatto, signore: lo troverà su Telegram.")}
 
 
+GIORNI_AGENDA_HUD = 4
+
+
+async def agenda_per_hud() -> dict:
+    """Eventi di oggi e dei prossimi giorni per il riquadro dell'HUD."""
+    if not agenda.pronta():
+        return {"tipo": "agenda", "pronta": False}
+    oggi = datetime.combine(date.today(), datetime.min.time()).astimezone()
+    try:
+        eventi = await agenda.eventi(oggi, oggi + timedelta(days=GIORNI_AGENDA_HUD))
+    except Exception as errore:
+        log.warning("agenda non disponibile: %s", errore)
+        return {"tipo": "agenda", "pronta": True, "errore": str(errore)}
+    return {"tipo": "agenda", "pronta": True, "eventi": eventi}
+
+
+NON_PRONTA = "L'agenda non è ancora collegata, signore: manca l'autorizzazione di Google."
+
+
+def _agenda(funzione):
+    """Gestisce in un solo punto agenda non collegata ed errori di Google."""
+    async def esegui(parametri: dict) -> dict:
+        try:
+            return await funzione(parametri)
+        except agenda.AgendaNonPronta as errore:
+            log.warning("agenda: %s", errore)
+            if not agenda.pronta():
+                return {"ok": False, "messaggio": NON_PRONTA}
+            return {"ok": False, "messaggio": f"Google ha obiettato, signore: {errore}."}
+    return esegui
+
+
+def giorno_richiesto(testo: str | None) -> date:
+    testo = (testo or "oggi").strip().lower()
+    scorciatoie = {"oggi": 0, "domani": 1, "dopodomani": 2}
+    if testo in scorciatoie:
+        return date.today() + timedelta(days=scorciatoie[testo])
+    if testo in parole.GIORNI:  # il prossimo giorno con quel nome
+        avanti = (parole.GIORNI.index(testo) - date.today().weekday()) % 7 or 7
+        return date.today() + timedelta(days=avanti)
+    return date.fromisoformat(testo[:10])
+
+
+@_agenda
+async def _leggi_agenda(parametri: dict) -> dict:
+    giorno = giorno_richiesto(parametri.get("giorno"))
+    inizio = datetime.combine(giorno, datetime.min.time()).astimezone()
+    trovati = await agenda.eventi(inizio, inizio + timedelta(days=1))
+    return {"ok": True, "messaggio": parole.elenco_eventi(trovati, parole.giorno(giorno))}
+
+
+@_agenda
+async def _crea_evento(parametri: dict) -> dict:
+    e = await agenda.crea(**{k: v for k, v in parametri.items() if v is not None})
+    return {"ok": True, "evento": e, "messaggio": _una(
+        f"Ho segnato «{e['titolo']}» per {parole.quando(e)}, signore.",
+        f"Fatto, signore: «{e['titolo']}», {parole.quando(e)}.",
+    )}
+
+
+@_agenda
+async def _sposta_evento(parametri: dict) -> dict:
+    e = await agenda.sposta(parametri["id"], parametri["inizio"], parametri.get("fine"),
+                            parametri.get("calendario") or "primary")
+    return {"ok": True, "evento": e, "messaggio": f"«{e['titolo']}» spostato a {parole.quando(e)}, signore."}
+
+
+@_agenda
+async def _elimina_evento(parametri: dict) -> dict:
+    await agenda.elimina(parametri["id"], parametri.get("calendario") or "primary")
+    titolo = parametri.get("_titolo")  # messo da _domanda_elimina
+    return {"ok": True, "messaggio": f"«{titolo}» eliminato dall'agenda, signore." if titolo
+            else "Evento eliminato dall'agenda, signore."}
+
+
+async def _domanda_elimina(parametri: dict) -> str:
+    e = await agenda.evento(parametri["id"], parametri.get("calendario") or "primary")
+    parametri["_titolo"] = e["titolo"]
+    return f"Elimino «{e['titolo']}» di {parole.quando(e)}, signore? Mi basta un sì."
+
+
 # --- Registro ----------------------------------------------------------------
 
 @dataclass
 class Azione:
     nome: str
     descrizione: str  # per il cervello
-    domanda: str  # richiesta di conferma, se sensibile
+    # Richiesta di conferma, se sensibile: testo fisso o funzione che lo
+    # prepara dai parametri (es. il titolo dell'evento da eliminare).
+    domanda: str | Callable[[dict], Awaitable[str]]
     esegui: Callable[[dict], Awaitable[dict]]
     sensibile: bool = False
 
@@ -156,6 +242,10 @@ AZIONI = {a.nome: a for a in [
            _obs("ResumeRecord", None, lambda: "Riprendo a registrare, signore.",
                 "Non c'è una registrazione in pausa, signore.")),
     Azione("invia_telegram", "Invia un messaggio Telegram a Pietro. Parametro: testo.", "", _invia_telegram),
+    Azione("leggi_agenda", "Impegni di un giorno. Parametro: giorno (oggi, domani, nome del giorno o AAAA-MM-GG).", "", _leggi_agenda),
+    Azione("crea_evento", "Crea un evento in agenda.", "", _crea_evento),
+    Azione("sposta_evento", "Sposta un evento dell'agenda.", "", _sposta_evento),
+    Azione("elimina_evento", "Elimina un evento dall'agenda.", _domanda_elimina, _elimina_evento, sensibile=True),
     Azione("cambia_scena", "Cambia la scena di OBS. Parametro: scena (nome, anche approssimativo).", "", _cambia_scena),
 ]}
 
@@ -179,12 +269,20 @@ class Gestore:
             return {"ok": False, "messaggio": f"Non conosco l'azione «{nome}», signore."}
         parametri = parametri or {}
         if azione.sensibile:
+            if isinstance(azione.domanda, str):
+                domanda = azione.domanda
+            else:
+                try:
+                    domanda = await azione.domanda(parametri)
+                except Exception as errore:
+                    log.warning("conferma di %s non preparata: %s", nome, errore)
+                    return {"ok": False, "azione": nome, "messaggio": f"Non riesco a trovare ciò che mi chiede, signore: {errore}."}
             self.in_attesa = {
                 "id": uuid.uuid4().hex[:8], "nome": nome, "parametri": parametri,
-                "domanda": azione.domanda, "scadenza": time.time() + SCADENZA_CONFERMA_S,
+                "domanda": domanda, "scadenza": time.time() + SCADENZA_CONFERMA_S,
             }
-            await self._invia({"tipo": "conferma", "id": self.in_attesa["id"], "domanda": azione.domanda})
-            return {"ok": True, "azione": nome, "in_attesa_di_conferma": True, "messaggio": azione.domanda}
+            await self._invia({"tipo": "conferma", "id": self.in_attesa["id"], "domanda": domanda})
+            return {"ok": True, "azione": nome, "in_attesa_di_conferma": True, "messaggio": domanda}
         return await self._esegui(azione, parametri)
 
     async def _esegui(self, azione: Azione, parametri: dict) -> dict:
@@ -194,6 +292,8 @@ class Gestore:
             log.exception("azione %s fallita", azione.nome)
             esito = {"ok": False, "messaggio": f"Qualcosa è andato storto, signore: {errore}."}
         esito["azione"] = azione.nome
+        if esito.get("ok") and azione.nome in ("crea_evento", "sposta_evento", "elimina_evento"):
+            await self._invia(await agenda_per_hud())  # l'HUD si aggiorna subito
         return esito
 
     async def conferma(self, si: bool, id_attesa: str | None = None) -> dict | None:

@@ -18,6 +18,7 @@ import logging
 import os
 import sys
 import uuid
+from datetime import date, datetime
 from pathlib import Path
 
 import uvicorn
@@ -29,8 +30,9 @@ from watchfiles import awatch
 from alfred import __version__, config
 from alfred.brain import FILE_PERSONALITA, FILE_SCHEDA
 from alfred.core import limiti, meteo, sistema, telegram_ponte
+from alfred.core.azioni import agenda_per_hud
 from alfred.core.conversazione import Conversazione
-from alfred.tools import obs
+from alfred.tools import agenda, obs
 
 CARTELLA_PROGETTO = Path(__file__).resolve().parents[2]
 CARTELLA_UI = CARTELLA_PROGETTO / "ui"
@@ -40,6 +42,8 @@ INTERVALLO_SISTEMA_S = 2
 INTERVALLO_METEO_S = 10 * 60
 INTERVALLO_LIMITI_S = 30 * 60
 INTERVALLO_REGIA_S = 3
+INTERVALLO_AGENDA_S = 5 * 60
+
 LIMITI_VECCHI_S = 5 * 60
 
 # Cambia a ogni avvio: l'HUD lo usa per capire che il servizio è stato aggiornato.
@@ -100,6 +104,13 @@ async def _ciclo_regia() -> None:
         await asyncio.sleep(INTERVALLO_REGIA_S)
 
 
+async def _ciclo_agenda() -> None:
+    while True:
+        if diffusore.client:
+            await diffusore.invia(await agenda_per_hud())
+        await asyncio.sleep(INTERVALLO_AGENDA_S)
+
+
 async def _aggiorna_limiti() -> None:
     if await limiti.sonda():
         await diffusore.invia(limiti.stato())
@@ -147,6 +158,7 @@ async def ciclo_di_vita(_app: FastAPI):
         asyncio.create_task(_ciclo_meteo()),
         asyncio.create_task(_ciclo_limiti()),
         asyncio.create_task(_ciclo_regia()),
+        asyncio.create_task(_ciclo_agenda()),
         asyncio.create_task(telegram_ponte.ciclo(conversazione)),
         asyncio.create_task(_osserva_file()),
     ]
@@ -169,6 +181,7 @@ async def canale(ws: WebSocket):
     await diffusore.invia({"tipo": "sistema", "dati": sistema.leggi()}, solo=ws)
     await diffusore.invia(conversazione.stato(), solo=ws)
     await diffusore.invia(limiti.stato(), solo=ws)
+    await diffusore.invia(await agenda_per_hud(), solo=ws)
     if attesa := conversazione.azioni.stato_attesa():
         await diffusore.invia(attesa, solo=ws)
     await diffusore.invia(await _meteo(), solo=ws)
@@ -214,6 +227,16 @@ async def dati_meteo():
     if "errore" in risposta:
         return JSONResponse({"errore": risposta["errore"]}, status_code=503)
     return risposta["dati"]
+
+
+@app.get("/api/agenda")
+async def eventi_agenda(da: str, a: str):
+    try:
+        inizio = datetime.combine(date.fromisoformat(da), datetime.min.time()).astimezone()
+        fine = datetime.combine(date.fromisoformat(a), datetime.min.time()).astimezone()
+        return {"eventi": await agenda.eventi(inizio, fine)}
+    except agenda.AgendaNonPronta as errore:
+        return {"errore": str(errore), "pronta": agenda.pronta()}
 
 
 @app.post("/api/azioni/{nome}")

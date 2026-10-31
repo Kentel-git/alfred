@@ -149,6 +149,65 @@ function mostraLimiti(m) {
   $("riserve-note").classList.toggle("avviso", r.nome !== "normale");
 }
 
+// --- L'agenda --------------------------------------------------------------------
+
+function etichettaGiorno(d) {
+  const oggi = new Date(); oggi.setHours(0, 0, 0, 0);
+  const giorni = Math.round((d - oggi) / 86400000);
+  if (giorni === 0) return "Oggi";
+  if (giorni === 1) return "Domani";
+  return d.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
+}
+
+function mostraAgenda(m) {
+  $("riquadro-agenda").hidden = false;
+  const contenitore = $("agenda-giorni");
+  if (!m.pronta || m.errore) {
+    const p = document.createElement("p");
+    p.className = "tenue";
+    p.textContent = !m.pronta ? "L'agenda non è ancora collegata." : "Google non risponde, riproverò a breve.";
+    contenitore.replaceChildren(p);
+    return;
+  }
+  const perGiorno = new Map();
+  for (const e of m.eventi) {
+    const inizio = new Date(e.tutto_il_giorno ? `${e.inizio}T00:00` : e.inizio);
+    const chiave = new Date(inizio); chiave.setHours(0, 0, 0, 0);
+    if (!perGiorno.has(+chiave)) perGiorno.set(+chiave, []);
+    perGiorno.get(+chiave).push({ ...e, inizioData: inizio });
+  }
+  if (!perGiorno.size) {
+    const p = document.createElement("p");
+    p.className = "tenue";
+    p.textContent = "Nessun impegno nei prossimi giorni.";
+    contenitore.replaceChildren(p);
+    return;
+  }
+  const adesso = new Date();
+  contenitore.replaceChildren(...[...perGiorno].map(([chiave, eventi]) => {
+    const sezione = document.createElement("section");
+    const titolo = document.createElement("h3");
+    titolo.textContent = etichettaGiorno(new Date(chiave));
+    const lista = document.createElement("ul");
+    for (const e of eventi) {
+      const li = document.createElement("li");
+      const fine = new Date(e.tutto_il_giorno ? `${e.fine}T00:00` : e.fine);
+      if (fine < adesso) li.className = "passato";
+      const orario = document.createElement("span");
+      orario.className = "orario";
+      orario.textContent = e.tutto_il_giorno
+        ? "giorno"
+        : e.inizioData.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+      const nome = document.createElement("span");
+      nome.textContent = e.titolo;
+      li.append(orario, nome);
+      lista.append(li);
+    }
+    sezione.append(titolo, lista);
+    return sezione;
+  }));
+}
+
 // --- La regia (OBS) ------------------------------------------------------------
 
 function azione(nome, parametri = {}) {
@@ -383,6 +442,9 @@ function collega() {
         break;
       case "conferma_chiusa":
         if ($("conferma").dataset.id === m.id) $("conferma").hidden = true;
+        break;
+      case "agenda":
+        mostraAgenda(m);
         break;
       case "regia":
         mostraRegia(m.dati);

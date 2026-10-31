@@ -98,6 +98,39 @@ async def invia_telegram(testo: str) -> dict:
     return await _azione("invia_telegram", {"testo": testo})
 
 
+@server.tool(annotations=SOLA_LETTURA)
+async def agenda_eventi(da: str, a: str) -> dict:
+    """Eventi dell'agenda di Pietro tra due date (AAAA-MM-GG, "a" esclusa),
+    con id e calendario: servono per spostare o eliminare un evento."""
+    async with httpx.AsyncClient(base_url=config.url_core(), timeout=30) as client:
+        return (await client.get("/api/agenda", params={"da": da, "a": a})).json()
+
+
+@server.tool(annotations=AZIONE)
+async def crea_evento(titolo: str, inizio: str, fine: str | None = None, tutto_il_giorno: bool = False,
+                      luogo: str | None = None, descrizione: str | None = None) -> dict:
+    """Crea un evento nel calendario principale. inizio e fine in ISO 8601
+    nell'ora locale (es. 2026-11-07T21:00); per eventi di un giorno intero
+    solo la data e tutto_il_giorno=true. Senza fine dura un'ora."""
+    return await _azione("crea_evento", {"titolo": titolo, "inizio": inizio, "fine": fine,
+                                         "tutto_il_giorno": tutto_il_giorno, "luogo": luogo,
+                                         "descrizione": descrizione})
+
+
+@server.tool(annotations=AZIONE)
+async def sposta_evento(id: str, inizio: str, fine: str | None = None, calendario: str = "primary") -> dict:
+    """Sposta un evento (id e calendario da agenda_eventi) al nuovo inizio in
+    ISO 8601, ora locale. Senza fine mantiene la durata."""
+    return await _azione("sposta_evento", {"id": id, "inizio": inizio, "fine": fine, "calendario": calendario})
+
+
+@server.tool(annotations=AZIONE)
+async def elimina_evento(id: str, calendario: str = "primary") -> dict:
+    """Chiede di eliminare un evento (id e calendario da agenda_eventi).
+    Richiede sempre la conferma di Pietro."""
+    return await _azione("elimina_evento", {"id": id, "calendario": calendario})
+
+
 @server.tool(annotations=AZIONE)
 async def cambia_scena(scena: str) -> dict:
     """Cambia la scena di OBS. Il nome può essere approssimativo: viene

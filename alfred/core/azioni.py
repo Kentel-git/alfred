@@ -153,11 +153,20 @@ def _agenda(funzione):
     return esegui
 
 
+ORA_DEL_RISVEGLIO = 5
+
+
+def notte_fonda() -> bool:
+    """Tra mezzanotte e le 5 "domani" vuol dire il giorno che sta per cominciare."""
+    return datetime.now().hour < ORA_DEL_RISVEGLIO
+
+
 def giorno_richiesto(testo: str | None) -> date:
     testo = (testo or "oggi").strip().lower()
     scorciatoie = {"oggi": 0, "domani": 1, "dopodomani": 2}
     if testo in scorciatoie:
-        return date.today() + timedelta(days=scorciatoie[testo])
+        spostamento = scorciatoie[testo] - (1 if notte_fonda() and testo != "oggi" else 0)
+        return date.today() + timedelta(days=spostamento)
     if testo in parole.GIORNI:  # il prossimo giorno con quel nome
         avanti = (parole.GIORNI.index(testo) - date.today().weekday()) % 7 or 7
         return date.today() + timedelta(days=avanti)
@@ -169,7 +178,9 @@ async def _leggi_agenda(parametri: dict) -> dict:
     giorno = giorno_richiesto(parametri.get("giorno"))
     inizio = datetime.combine(giorno, datetime.min.time()).astimezone()
     trovati = await agenda.eventi(inizio, inizio + timedelta(days=1))
-    return {"ok": True, "messaggio": parole.elenco_eventi(trovati, parole.giorno(giorno))}
+    # Di notte "oggi" e "domani" si confondono: meglio dire la data per esteso.
+    etichetta = parole.giorno_esteso(giorno) if notte_fonda() else parole.giorno(giorno)
+    return {"ok": True, "messaggio": parole.elenco_eventi(trovati, etichetta)}
 
 
 @_agenda
@@ -200,6 +211,17 @@ async def _domanda_elimina(parametri: dict) -> str:
     e = await agenda.evento(parametri["id"], parametri.get("calendario") or "primary")
     parametri["_titolo"] = e["titolo"]
     return f"Elimino «{e['titolo']}» di {parole.quando(e)}, signore? Mi basta un sì."
+
+
+async def _sveglia(accesa: bool) -> dict:
+    from alfred.voce import sveglia
+
+    if sveglia.istanza is None or not sveglia.disponibile():
+        return {"ok": False, "messaggio": "Non ho ancora le orecchie per il mio nome su questa macchina, signore."}
+    sveglia.istanza.attiva = accesa
+    if accesa:
+        return {"ok": True, "messaggio": "Sono di nuovo all'ascolto, signore: mi basta sentire il mio nome."}
+    return {"ok": True, "messaggio": "Smetto di ascoltare, signore. Per chiamarmi resta il tasto, o mi dica di tornare ad ascoltare."}
 
 
 async def _sospendi(_parametri: dict) -> dict:
@@ -262,6 +284,9 @@ AZIONI = {a.nome: a for a in [
     Azione("crea_evento", "Crea un evento in agenda.", "", _crea_evento),
     Azione("sposta_evento", "Sposta un evento dell'agenda.", "", _sposta_evento),
     Azione("elimina_evento", "Elimina un evento dall'agenda.", _domanda_elimina, _elimina_evento, sensibile=True),
+    Azione("sveglia_spenta", "Alfred smette di ascoltare il proprio nome (microfono chiuso).", "",
+           lambda _p: _sveglia(False)),
+    Azione("sveglia_accesa", "Alfred torna ad ascoltare il proprio nome.", "", lambda _p: _sveglia(True)),
     Azione("sospendi_computer", "Mette subito il computer in standby.",
            "Metto il computer in standby, signore? Da quel momento non potrò risponderle, nemmeno su Telegram.",
            _sospendi, sensibile=True),

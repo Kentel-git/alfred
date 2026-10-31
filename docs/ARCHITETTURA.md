@@ -63,7 +63,10 @@ impeccabile.
   cervello locale.
 - **voce/**: ascolto (pw-record, fine frase con Silero VAD, trascrizione
   faster-whisper "small" sulla CPU: la GPU resta libera per giochi e dirette)
-  e sintesi vocale (Kokoro o Piper). Tutto in locale, zero riserve.
+  e sintesi vocale (Kokoro, miscela di voci; intonazione delle domande con
+  WORLD). Sveglia sul nome "Alfred" in due stadi: riconoscitore di parole
+  chiave sherpa-onnx sempre attivo e permissivo, poi verifica della frase con
+  Whisper. Tutto in locale, zero riserve.
 
 ## Strumenti previsti
 

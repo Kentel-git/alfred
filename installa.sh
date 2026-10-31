@@ -46,6 +46,18 @@ for file in kokoro-v1.0.onnx voices-v1.0.bin; do
         mv "$VOCE/$file.parziale" "$VOCE/$file"
     fi
 done
+# Sveglia sul nome "Alfred": riconoscitore di parole chiave (sherpa-onnx, 5 MB).
+KWS="$VOCE/kws"
+if [ ! -f "$KWS/encoder-epoch-12-avg-2-chunk-16-left-64.int8.onnx" ]; then
+    dire "Scarico il riconoscitore del nome…"
+    TEMP=$(mktemp -d)
+    curl -L --fail --progress-bar -o "$TEMP/kws.tar.bz2" \
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01.tar.bz2"
+    tar xjf "$TEMP/kws.tar.bz2" -C "$TEMP"
+    mkdir -p "$KWS"
+    cp "$TEMP"/sherpa-onnx-kws-*/tokens.txt "$TEMP"/sherpa-onnx-kws-*/*-epoch-12-avg-2-chunk-16-left-64.int8.onnx "$KWS/"
+    rm -rf "$TEMP"
+fi
 # Facoltativo: intonazione corretta delle domande (pyworld va compilato).
 if ! "$DIR/.venv/bin/python" -c "import pyworld" 2>/dev/null; then
     "$DIR/.venv/bin/pip" install -q --disable-pip-version-check "setuptools<81" cython \

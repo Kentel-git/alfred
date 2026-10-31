@@ -21,7 +21,7 @@ from alfred.tools import telegram
 import tempfile
 from pathlib import Path
 
-from alfred.voce import ascolto, parola
+from alfred.voce import ascolto, parola, sveglia
 
 FILE_CONVERSAZIONE = CARTELLA_STATO / "conversazione.json"
 MAX_MESSAGGI = 100
@@ -81,6 +81,10 @@ class Conversazione:
         self._ascolto: ascolto.Ascolto | None = None
         self._discorso: parola.Discorso | None = None
         self._vocale_telegram = False  # l'ultimo messaggio Telegram era un vocale
+        # Sentendo il suo nome mentre parla, Alfred si zittisce subito: aspettare la
+        # fine della frase vorrebbe dire aspettare il silenzio, che con la sua
+        # voce in sottofondo non arriverebbe.
+        self.sveglia = sveglia.Sveglia(self._chiamato, quando_forse=self.zittisci)
         # Ciò che è successo senza il cervello (comandi diretti, conferme):
         # glielo si racconta al messaggio successivo, così resta coerente.
         self._da_riferire: list[str] = []
@@ -128,6 +132,9 @@ class Conversazione:
         comando = comandi.riconosci(testo)
         if comando:
             nome, parametri = comando
+            if nome == "zittisci":
+                self.zittisci()  # nessuna risposta: il silenzio è la risposta
+                return
             if nome in ("conferma", "annulla"):
                 esito = await self.azioni.conferma(nome == "conferma")
                 if esito:
@@ -192,10 +199,24 @@ class Conversazione:
         self._ascolto = ascolto.Ascolto()
         asyncio.create_task(self._ascolta_frase(self._ascolto))
 
+    async def _chiamato(self, esito: str, comando: str) -> None:
+        """Pietro ha detto "Alfred" (verificato)."""
+        self.zittisci()
+        if esito == "chiamata":
+            await self.ricevi(comando, origine="voce")
+            return
+        # Solo il nome: Alfred si volta, e ascolta.
+        if discorso := self._parla():
+            discorso.aggiungi("Sì, signore?")
+            discorso.fine()
+            await discorso.compito
+        await self.ascolta()
+
     async def _ascolta_frase(self, sessione: "ascolto.Ascolto") -> None:
         async def avvisa(stato: str) -> None:
             await self._invia({"tipo": "ascolto", "stato": stato})
 
+        self.sveglia.sospendi()  # il microfono è già aperto per la frase
         try:
             audio = await sessione.frase(avvisa)
             if audio is None:
@@ -209,6 +230,7 @@ class Conversazione:
             return
         finally:
             self._ascolto = None
+            self.sveglia.riprendi()
         await avvisa("fine")
         if testo:
             await self.ricevi(testo, origine="voce")
@@ -230,6 +252,10 @@ class Conversazione:
         self._ascolto: ascolto.Ascolto | None = None
         self._discorso: parola.Discorso | None = None
         self._vocale_telegram = False  # l'ultimo messaggio Telegram era un vocale
+        # Sentendo il suo nome mentre parla, Alfred si zittisce subito: aspettare la
+        # fine della frase vorrebbe dire aspettare il silenzio, che con la sua
+        # voce in sottofondo non arriverebbe.
+        self.sveglia = sveglia.Sveglia(self._chiamato, quando_forse=self.zittisci)
         esito = await self.azioni.richiedi(nome, parametri)
         if not esito.get("in_attesa_di_conferma"):
             await self.annuncia(esito["messaggio"], esito)
@@ -239,6 +265,10 @@ class Conversazione:
         self._ascolto: ascolto.Ascolto | None = None
         self._discorso: parola.Discorso | None = None
         self._vocale_telegram = False  # l'ultimo messaggio Telegram era un vocale
+        # Sentendo il suo nome mentre parla, Alfred si zittisce subito: aspettare la
+        # fine della frase vorrebbe dire aspettare il silenzio, che con la sua
+        # voce in sottofondo non arriverebbe.
+        self.sveglia = sveglia.Sveglia(self._chiamato, quando_forse=self.zittisci)
         if esito := await self.azioni.conferma(si, id_attesa):
             await self.annuncia(esito["messaggio"], esito)
 

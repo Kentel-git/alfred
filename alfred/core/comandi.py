@@ -28,6 +28,9 @@ COMANDI: list[tuple[re.Pattern, str]] = [
     (re.compile(rf"^(?:{AVVIA}\s+)?(?:la\s+)?modalita\s+gioco$|^voglio giocare$|^si gioca$"
                 rf"|^{AVVIA}\s+(?:il\s+)?(?:gioco|battle\s*net|wow|world of warcraft)$"), "modalita_gioco"),
     (re.compile(rf"^{AVVIA}\s+obs$"), "apri_obs"),
+    (re.compile(r"^(?:basta|basta cosi|silenzio|zitto|taci|stop|fermati|ok basta)$"), "zittisci"),
+    (re.compile(r"^(?:smetti|smettila)\s+di\s+ascoltar(?:e|mi)$|^non\s+ascoltar(?:e|mi)(?:\s+piu)?$|^spegni\s+(?:la\s+)?sveglia$"), "sveglia_spenta"),
+    (re.compile(r"^(?:torna\s+ad|ricomincia\s+ad?)\s+ascoltar(?:e|mi)$|^ascoltami\s+(?:di\s+nuovo|ancora)$|^(?:accendi|riaccendi)\s+(?:la\s+)?sveglia$"), "sveglia_accesa"),
     (re.compile(r"^(?:metti|manda)\s+(?:il\s+)?(?:computer|pc|portatile)?\s*in\s+standby$|^sospendi(?:\s+il\s+(?:computer|pc|portatile))?$"
                 r"|^(?:vai|andiamo)\s+in\s+standby$"), "sospendi_computer"),
     (re.compile(r"^(?:puoi\s+)?(?:consenti|permetti|lascia(?:\s+andare)?)\s+(?:lo\s+|in\s+)?standby$|^(?:il computer )?puo andare in standby$"), "consenti_standby"),

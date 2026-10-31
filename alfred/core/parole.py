@@ -21,6 +21,10 @@ def giorno(d: date) -> str:
     return testo if d.year == date.today().year else f"{testo} {d.year}"
 
 
+def giorno_esteso(d: date) -> str:
+    return f"{GIORNI[d.weekday()]} {d.day} {MESI[d.month - 1]}"
+
+
 def ora(istante: datetime) -> str:
     articolo = "all'" if istante.hour in (1, 8, 11) else "alle "
     minuti = f":{istante.minute:02d}" if istante.minute else ""

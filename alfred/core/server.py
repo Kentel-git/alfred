@@ -18,6 +18,7 @@ import logging
 import os
 import sys
 import uuid
+import warnings
 from datetime import date, datetime
 from pathlib import Path
 
@@ -163,6 +164,7 @@ async def ciclo_di_vita(_app: FastAPI):
         asyncio.create_task(veglia.istanza().sorveglia(diffusore.invia)),
         asyncio.create_task(ascolto.prepara()),
         asyncio.create_task(parola.prepara()),
+        asyncio.create_task(conversazione.sveglia.ascolta_sempre()),
         asyncio.create_task(telegram_ponte.ciclo(conversazione)),
         asyncio.create_task(_osserva_file()),
     ]
@@ -280,5 +282,8 @@ def avvia() -> None:
     logging.getLogger("watchfiles").setLevel(logging.WARNING)
     # httpx registra gli indirizzi completi, e quelli di Telegram contengono il token.
     logging.getLogger("httpx").setLevel(logging.WARNING)
+    # Avvisi innocui delle librerie vocali (cambi di lingua, pkg_resources).
+    logging.getLogger("phonemizer").setLevel(logging.ERROR)
+    warnings.filterwarnings("ignore", message="pkg_resources is deprecated")
     porta = config.carica()["generale"]["porta"]
     uvicorn.run(app, host="127.0.0.1", port=porta, log_level="warning")

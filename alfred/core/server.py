@@ -233,5 +233,7 @@ app.mount("/", StaticFiles(directory=CARTELLA_UI, html=True), name="ui")
 def avvia() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     logging.getLogger("watchfiles").setLevel(logging.WARNING)
+    # httpx registra gli indirizzi completi, e quelli di Telegram contengono il token.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     porta = config.carica()["generale"]["porta"]
     uvicorn.run(app, host="127.0.0.1", port=porta, log_level="warning")

@@ -10,6 +10,7 @@ systemctl --user daemon-reload
 
 pkill -f "python.* -m alfred finestra" 2>/dev/null || true
 rm -f "$HOME/.local/bin/alfred"
+rm -f "${XDG_DATA_HOME:-$HOME/.local/share}/applications/"alfred{,-riavvia,-spegni}.desktop
 
 if [ -f "$CONFIG/niri/config.kdl" ]; then
     sed -i '/^\/\/ Alfred$/d; /^include "alfred.kdl"$/d' "$CONFIG/niri/config.kdl"

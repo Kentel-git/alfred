@@ -71,6 +71,18 @@ mkdir -p "$BIN"
 ln -sf "$DIR/bin/alfred" "$BIN/alfred"
 dire "Comando: $BIN/alfred"
 
+# --- Voci di menu -------------------------------------------------------------
+APPS="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+mkdir -p "$APPS"
+voce_menu() {  # file nome commento comando icona
+    printf '%s\n' "[Desktop Entry]" "Type=Application" "Name=$2" "Comment=$3" \
+        "Exec=$BIN/alfred $4" "Icon=$5" "Terminal=false" "Categories=Utility;" > "$APPS/$1.desktop"
+}
+voce_menu alfred "Alfred" "Richiama il maggiordomo" toggle preferences-desktop-assistive-technology
+voce_menu alfred-riavvia "Alfred: riavvia" "Riavvia il servizio di Alfred" riavvia view-refresh
+voce_menu alfred-spegni "Alfred: spegni" "Ferma Alfred fino al prossimo accesso" spegni system-shutdown
+dire "Voci di menu: Alfred, Alfred: riavvia, Alfred: spegni."
+
 # --- Configurazione ----------------------------------------------------------
 mkdir -p "$CONFIG/alfred"
 if [ ! -f "$CONFIG/alfred/config.toml" ]; then

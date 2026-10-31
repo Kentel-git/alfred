@@ -11,6 +11,7 @@ Le risposte sono già scritte, in personaggio, così l'esito di un'azione non
 costa nulla.
 """
 
+import asyncio
 import difflib
 import logging
 import random
@@ -22,7 +23,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from alfred import config
-from alfred.core import parole
+from alfred.core import parole, veglia
 from alfred.tools import agenda, gioco, obs, telegram
 
 log = logging.getLogger("alfred.azioni")
@@ -201,6 +202,21 @@ async def _domanda_elimina(parametri: dict) -> str:
     return f"Elimino «{e['titolo']}» di {parole.quando(e)}, signore? Mi basta un sì."
 
 
+async def _sospendi(_parametri: dict) -> dict:
+    asyncio.create_task(veglia.istanza().sospendi_ora())
+    return {"ok": True, "messaggio": "Buonanotte, signore. Spengo le luci."}
+
+
+async def _consenti_standby(_parametri: dict) -> dict:
+    veglia.istanza().imposta(False)
+    return {"ok": True, "messaggio": "Come desidera, signore: il computer potrà riposare quando vorrà. Se mi serve sveglio, me lo dica."}
+
+
+async def _impedisci_standby(_parametri: dict) -> dict:
+    veglia.istanza().imposta(True)
+    return {"ok": True, "messaggio": "Resterò di guardia, signore: con l'alimentatore collegato il computer non andrà in standby da solo."}
+
+
 # --- Registro ----------------------------------------------------------------
 
 @dataclass
@@ -246,6 +262,11 @@ AZIONI = {a.nome: a for a in [
     Azione("crea_evento", "Crea un evento in agenda.", "", _crea_evento),
     Azione("sposta_evento", "Sposta un evento dell'agenda.", "", _sposta_evento),
     Azione("elimina_evento", "Elimina un evento dall'agenda.", _domanda_elimina, _elimina_evento, sensibile=True),
+    Azione("sospendi_computer", "Mette subito il computer in standby.",
+           "Metto il computer in standby, signore? Da quel momento non potrò risponderle, nemmeno su Telegram.",
+           _sospendi, sensibile=True),
+    Azione("consenti_standby", "Permette di nuovo lo standby automatico con l'alimentatore.", "", _consenti_standby),
+    Azione("impedisci_standby", "Con l'alimentatore collegato il computer non va in standby da solo (predefinito).", "", _impedisci_standby),
     Azione("cambia_scena", "Cambia la scena di OBS. Parametro: scena (nome, anche approssimativo).", "", _cambia_scena),
 ]}
 

@@ -149,6 +149,15 @@ function mostraLimiti(m) {
   $("riserve-note").classList.toggle("avviso", r.nome !== "normale");
 }
 
+function mostraVeglia(v) {
+  $("veglia").textContent = !v.alimentatore
+    ? "normale, a batteria"
+    : v.voluta ? "Alfred veglia" : "consentito";
+  $("veglia").title = v.attiva
+    ? "Con l'alimentatore il computer non va in standby da solo; lo schermo può bloccarsi e spegnersi."
+    : "";
+}
+
 // --- L'agenda --------------------------------------------------------------------
 
 function etichettaGiorno(d) {
@@ -444,6 +453,9 @@ function collega() {
         break;
       case "conferma_chiusa":
         if ($("conferma").dataset.id === m.id) $("conferma").hidden = true;
+        break;
+      case "veglia":
+        mostraVeglia(m);
         break;
       case "agenda":
         mostraAgenda(m);

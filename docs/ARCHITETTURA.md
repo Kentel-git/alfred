@@ -95,6 +95,16 @@ settimana o il 90% della sessione. Soglie in `[economia]` di `config.toml`.
 Regola di progetto: ogni nuova funzione deve dichiarare quale modello usa, e
 preferire sempre la soluzione senza modello quando basta.
 
+## Veglia
+
+Mentre Alfred è attivo e l'alimentatore è collegato, il computer non va in
+standby da solo: schermo bloccato e spento sì, sistema no (servizio, Telegram,
+dirette restano vivi). Con DMS Alfred imposta a "mai" `acSuspendTimeout` e
+rimette il valore originale quando si ferma o quando glielo si chiede; lo
+standby manuale resta possibile. Altrove usa un inibitore di logind attivo
+solo con l'alimentatore (che però blocca anche lo standby manuale: va chiesto
+ad Alfred). Modulo: `alfred/core/veglia.py`.
+
 ## Posizione
 
 Il meteo usa la posizione del computer tramite **GeoClue** (servizio libero di

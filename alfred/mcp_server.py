@@ -136,6 +136,18 @@ async def elimina_evento(id: str, calendario: str = "primary") -> dict:
 
 
 @server.tool(annotations=AZIONE)
+async def standby(azione: str) -> dict:
+    """Standby del computer. azione: "sospendi" (subito, chiede conferma a
+    Pietro), "consenti" (permette lo standby automatico) o "impedisci"
+    (predefinito: con l'alimentatore collegato non va in standby da solo,
+    lo schermo può comunque bloccarsi e spegnersi)."""
+    nomi = {"sospendi": "sospendi_computer", "consenti": "consenti_standby", "impedisci": "impedisci_standby"}
+    if azione not in nomi:
+        return {"ok": False, "messaggio": f"Azione sconosciuta: {azione}. Usa sospendi, consenti o impedisci."}
+    return await _azione(nomi[azione])
+
+
+@server.tool(annotations=AZIONE)
 async def cambia_scena(scena: str) -> dict:
     """Cambia la scena di OBS. Il nome può essere approssimativo: viene
     confrontato con le scene esistenti (vedi stato_obs)."""

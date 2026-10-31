@@ -28,6 +28,10 @@ COMANDI: list[tuple[re.Pattern, str]] = [
     (re.compile(rf"^(?:{AVVIA}\s+)?(?:la\s+)?modalita\s+gioco$|^voglio giocare$|^si gioca$"
                 rf"|^{AVVIA}\s+(?:il\s+)?(?:gioco|battle\s*net|wow|world of warcraft)$"), "modalita_gioco"),
     (re.compile(rf"^{AVVIA}\s+obs$"), "apri_obs"),
+    (re.compile(r"^(?:metti|manda)\s+(?:il\s+)?(?:computer|pc|portatile)?\s*in\s+standby$|^sospendi(?:\s+il\s+(?:computer|pc|portatile))?$"
+                r"|^(?:vai|andiamo)\s+in\s+standby$"), "sospendi_computer"),
+    (re.compile(r"^(?:puoi\s+)?(?:consenti|permetti|lascia(?:\s+andare)?)\s+(?:lo\s+|in\s+)?standby$|^(?:il computer )?puo andare in standby$"), "consenti_standby"),
+    (re.compile(r"^(?:resta|rimani|stai)\s+sveglio$|^tieni\s+sveglio\s+(?:il\s+)?(?:computer|pc|portatile)$|^niente\s+standby$"), "impedisci_standby"),
     (re.compile(rf"^{AVVIA}\s+{DIRETTA}$|^(?:andiamo|vai|mandami|mettimi)\s+in\s+(?:onda|diretta|live)$|^in onda$"), "avvia_diretta"),
     (re.compile(rf"^{FERMA}\s+{DIRETTA}$|^(?:chiudiamo|fuori onda)$"), "ferma_diretta"),
     (re.compile(rf"^{AVVIA}\s+{REGISTRAZIONE}$|^registra$|^(?:inizia|comincia)\s+a\s+registrare$"), "avvia_registrazione"),

@@ -27,6 +27,7 @@ Ogni fase produce qualcosa di usabile da sola.
 - [x] modalità gioco → Battle.net (comando in config; da provare dal vivo)
 - [x] OBS: apertura, scene, diretta, registrazione; riquadro "La regia" nell'HUD
 - [x] conferme per le azioni sensibili (pulsanti o "sì"/"no")
+- [x] veglia: con l'alimentatore il computer non va in standby da solo mentre Alfred è attivo (DMS o logind); standby su richiesta con conferma
 
 ## Fase 3 — Alfred parla
 - [ ] parola di attivazione

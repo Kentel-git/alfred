@@ -29,7 +29,7 @@ from watchfiles import awatch
 
 from alfred import __version__, config
 from alfred.brain import FILE_PERSONALITA, FILE_SCHEDA
-from alfred.core import limiti, meteo, sistema, telegram_ponte
+from alfred.core import limiti, meteo, sistema, telegram_ponte, veglia
 from alfred.core.azioni import agenda_per_hud
 from alfred.core.conversazione import Conversazione
 from alfred.tools import agenda, obs
@@ -159,6 +159,7 @@ async def ciclo_di_vita(_app: FastAPI):
         asyncio.create_task(_ciclo_limiti()),
         asyncio.create_task(_ciclo_regia()),
         asyncio.create_task(_ciclo_agenda()),
+        asyncio.create_task(veglia.istanza().sorveglia(diffusore.invia)),
         asyncio.create_task(telegram_ponte.ciclo(conversazione)),
         asyncio.create_task(_osserva_file()),
     ]
@@ -166,6 +167,7 @@ async def ciclo_di_vita(_app: FastAPI):
     for compito in compiti:
         compito.cancel()
     await conversazione.chiudi()
+    veglia.istanza().chiudi()
 
 
 app = FastAPI(
@@ -181,6 +183,7 @@ async def canale(ws: WebSocket):
     await diffusore.invia({"tipo": "sistema", "dati": sistema.leggi()}, solo=ws)
     await diffusore.invia(conversazione.stato(), solo=ws)
     await diffusore.invia(limiti.stato(), solo=ws)
+    await diffusore.invia(veglia.istanza().stato(), solo=ws)
     await diffusore.invia(await agenda_per_hud(), solo=ws)
     if attesa := conversazione.azioni.stato_attesa():
         await diffusore.invia(attesa, solo=ws)

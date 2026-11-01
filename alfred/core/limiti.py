@@ -14,28 +14,19 @@ import shutil
 import time
 from datetime import date
 
-from alfred.config import CARTELLA_STATO
+from alfred import config
 
-FILE_LIMITI = CARTELLA_STATO / "limiti.json"
 log = logging.getLogger("alfred.limiti")
 
 _stato: dict = {"sessione": None, "settimana": None, "aggiornato": 0, "oggi": None}
 _sonda_in_corso = asyncio.Lock()
 
 
-def _carica() -> None:
-    try:
-        _stato.update(json.loads(FILE_LIMITI.read_text()))
-    except (OSError, ValueError):
-        pass
-
-
 def _salva() -> None:
-    CARTELLA_STATO.mkdir(parents=True, exist_ok=True)
-    FILE_LIMITI.write_text(json.dumps(_stato))
+    config.salva_stato("limiti.json", **_stato)
 
 
-_carica()
+_stato.update(config.leggi_stato("limiti.json"))
 
 
 def stato() -> dict:

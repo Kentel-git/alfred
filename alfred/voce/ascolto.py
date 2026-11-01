@@ -87,6 +87,52 @@ def _parla_ora(audio: np.ndarray, durata_frase_s: float) -> tuple[bool, float]:
     return True, (len(audio) - tratti[-1]["end"]) / FREQUENZA
 
 
+async def microfono(nome: str) -> asyncio.subprocess.Process:
+    """Il microfono come audio grezzo a 16 kHz; nome è quello che mostra PipeWire."""
+    if not shutil.which("pw-record"):
+        raise RuntimeError("manca pw-record (PipeWire)")
+    return await asyncio.create_subprocess_exec(
+        "pw-record", "--raw", "--rate", str(FREQUENZA), "--channels", "1", "--format", "s16",
+        "-P", f'{{ media.name = "{nome}" }}', "-",
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+    )
+
+
+def blocco(dati: bytes) -> np.ndarray:
+    return np.frombuffer(dati, np.int16).astype(np.float32) / 32768
+
+
+async def fino_al_silenzio(processo, gia_sentito: np.ndarray | None = None,
+                           interrompi: asyncio.Event | None = None) -> np.ndarray | None:
+    """Legge il microfono finché non si smette di parlare. None se non si è parlato.
+    gia_sentito: l'audio precedente (la sveglia ci passa il nome appena detto)."""
+    imp = _impostazioni()
+    blocchi = [] if gia_sentito is None else [gia_sentito]
+    ultimo_controllo, inizio = 0.0, time.monotonic()
+    while not (interrompi and interrompi.is_set()):
+        try:
+            dati = await asyncio.wait_for(processo.stdout.readexactly(BLOCCO * 2), 2)
+        except (asyncio.IncompleteReadError, TimeoutError):
+            break
+        blocchi.append(blocco(dati))
+        trascorso = time.monotonic() - inizio
+        if trascorso - ultimo_controllo < CONTROLLO_OGNI_S:
+            continue
+        ultimo_controllo = trascorso
+        parlato, silenzio = await asyncio.to_thread(_parla_ora, np.concatenate(blocchi), trascorso)
+        if parlato and silenzio >= imp["fine_frase_s"]:
+            break
+        if not parlato and trascorso >= imp["attesa_inizio_s"]:
+            return None
+        if trascorso >= imp["durata_massima_s"]:
+            break
+    if not blocchi:
+        return None
+    audio = np.concatenate(blocchi)
+    parlato, _ = await asyncio.to_thread(_parla_ora, audio, 0)
+    return audio if parlato else None
+
+
 class Ascolto:
     """Una frase: dal momento in cui si apre il microfono al silenzio finale."""
 
@@ -98,43 +144,13 @@ class Ascolto:
 
     async def frase(self, avvisa) -> np.ndarray | None:
         """Registra finché non si smette di parlare. None se non si è parlato."""
-        imp = _impostazioni()
-        if not shutil.which("pw-record"):
-            raise RuntimeError("manca pw-record (PipeWire)")
-        processo = await asyncio.create_subprocess_exec(
-            "pw-record", "--raw", "--rate", str(FREQUENZA), "--channels", "1", "--format", "s16", "-",
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
-        )
-        blocchi: list[np.ndarray] = []
-        parlato, ultimo_controllo, inizio = False, 0.0, time.monotonic()
+        processo = await microfono("Alfred (ascolto)")
         await avvisa("in_ascolto")
         try:
-            while not self._interrompi.is_set():
-                try:
-                    dati = await asyncio.wait_for(processo.stdout.readexactly(BLOCCO * 2), 2)
-                except (asyncio.IncompleteReadError, TimeoutError):
-                    break
-                blocchi.append(np.frombuffer(dati, np.int16).astype(np.float32) / 32768)
-                trascorso = time.monotonic() - inizio
-                if trascorso - ultimo_controllo < CONTROLLO_OGNI_S:
-                    continue
-                ultimo_controllo = trascorso
-                audio = np.concatenate(blocchi)
-                parlato, silenzio = await asyncio.to_thread(_parla_ora, audio, trascorso)
-                if parlato and silenzio >= imp["fine_frase_s"]:
-                    break
-                if not parlato and trascorso >= imp["attesa_inizio_s"]:
-                    return None
-                if trascorso >= imp["durata_massima_s"]:
-                    break
+            return await fino_al_silenzio(processo, interrompi=self._interrompi)
         finally:
             processo.terminate()
             await processo.wait()
-        if not blocchi:
-            return None
-        audio = np.concatenate(blocchi)
-        parlato, _ = await asyncio.to_thread(_parla_ora, audio, 0)
-        return audio if parlato else None
 
 
 async def da_file(percorso: str) -> np.ndarray:

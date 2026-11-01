@@ -5,13 +5,11 @@ ALFRED_TELEGRAM_TOKEN. Il primo /start ricevuto collega la chat del
 proprietario: da quel momento il bot parla solo con lei e ignora chiunque altro.
 """
 
-import json
 
 import httpx
 
 from alfred import config
 
-FILE_STATO = config.CARTELLA_STATO / "telegram.json"
 API = "https://api.telegram.org/bot{token}/{metodo}"
 MAX_LUNGHEZZA = 4000  # Telegram accetta fino a 4096 caratteri per messaggio
 
@@ -25,16 +23,11 @@ def token() -> str | None:
 
 
 def _stato() -> dict:
-    try:
-        return json.loads(FILE_STATO.read_text())
-    except (OSError, ValueError):
-        return {}
+    return config.leggi_stato("telegram.json")
 
 
 def _salva_stato(**valori) -> None:
-    stato = _stato() | valori
-    config.CARTELLA_STATO.mkdir(parents=True, exist_ok=True)
-    FILE_STATO.write_text(json.dumps(stato))
+    config.salva_stato("telegram.json", **valori)
 
 
 def chat_collegata() -> int | None:

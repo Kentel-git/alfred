@@ -19,7 +19,7 @@ import webbrowser
 from datetime import date, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.parse import parse_qs, quote, urlencode, urlparse
 
 import httpx
 
@@ -130,6 +130,11 @@ async def _token_accesso(client_http: httpx.AsyncClient) -> str:
         return token["access_token"]
 
 
+def _id(valore: str) -> str:
+    """Id nell'indirizzo: quelli di Google possono contenere "#" (es. le festività)."""
+    return quote(valore, safe="@")
+
+
 async def _chiama(metodo: str, percorso: str, **richiesta) -> dict:
     async with httpx.AsyncClient(base_url=API, timeout=30) as client:
         intestazioni = {"Authorization": f"Bearer {await _token_accesso(client)}"}
@@ -192,10 +197,13 @@ def _evento(e: dict, calendario: str, nome_calendario: str) -> dict:
 
 async def eventi(da: datetime, a: datetime, richiesti: list[str] | None = None) -> list[dict]:
     """Eventi tra due istanti dai calendari personali (o da quelli richiesti)."""
-    elenco, _ = await scegli_calendari(richiesti)
+    return await eventi_di((await scegli_calendari(richiesti))[0], da, a)
+
+
+async def eventi_di(elenco: list[dict], da: datetime, a: datetime) -> list[dict]:
     risultati = []
     for c in elenco:
-        dati = await _chiama("GET", f"/calendars/{c['id']}/events", params={
+        dati = await _chiama("GET", f"/calendars/{_id(c['id'])}/events", params={
             "timeMin": da.astimezone().isoformat(), "timeMax": a.astimezone().isoformat(),
             "singleEvents": "true", "orderBy": "startTime", "maxResults": 100,
         })
@@ -204,7 +212,7 @@ async def eventi(da: datetime, a: datetime, richiesti: list[str] | None = None) 
 
 
 async def evento(id_evento: str, calendario: str = "primary") -> dict:
-    return _evento(await _chiama("GET", f"/calendars/{calendario}/events/{id_evento}"), calendario, "")
+    return _evento(await _chiama("GET", f"/calendars/{_id(calendario)}/events/{_id(id_evento)}"), calendario, "")
 
 
 def _orario(valore: str, tutto_il_giorno: bool) -> dict:
@@ -229,7 +237,7 @@ async def crea(titolo: str, inizio: str, fine: str | None = None, tutto_il_giorn
         corpo["location"] = luogo
     if descrizione:
         corpo["description"] = descrizione
-    return _evento(await _chiama("POST", f"/calendars/{calendario}/events", json=corpo), calendario, "")
+    return _evento(await _chiama("POST", f"/calendars/{_id(calendario)}/events", json=corpo), calendario, "")
 
 
 async def sposta(id_evento: str, inizio: str, fine: str | None = None, calendario: str = "primary") -> dict:
@@ -244,8 +252,8 @@ async def sposta(id_evento: str, inizio: str, fine: str | None = None, calendari
             durata = datetime.fromisoformat(attuale["fine"]) - datetime.fromisoformat(attuale["inizio"])
             fine = (datetime.fromisoformat(inizio) + durata).isoformat()
     corpo = {"start": _orario(inizio, tutto_il_giorno), "end": _orario(fine, tutto_il_giorno)}
-    return _evento(await _chiama("PATCH", f"/calendars/{calendario}/events/{id_evento}", json=corpo), calendario, "")
+    return _evento(await _chiama("PATCH", f"/calendars/{_id(calendario)}/events/{_id(id_evento)}", json=corpo), calendario, "")
 
 
 async def elimina(id_evento: str, calendario: str = "primary") -> None:
-    await _chiama("DELETE", f"/calendars/{calendario}/events/{id_evento}")
+    await _chiama("DELETE", f"/calendars/{_id(calendario)}/events/{_id(id_evento)}")

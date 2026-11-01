@@ -18,7 +18,6 @@ import collections
 import logging
 import os
 import re
-import time
 from pathlib import Path
 
 import numpy as np
@@ -109,11 +108,7 @@ class Sveglia:
                 await asyncio.sleep(3)
 
     async def _ciclo(self, riconoscitore) -> None:
-        processo = await asyncio.create_subprocess_exec(
-            "pw-record", "--raw", "--rate", str(ascolto.FREQUENZA), "--channels", "1", "--format", "s16",
-            "-P", '{ media.name = "Alfred (sveglia)" }', "-",
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
-        )
+        processo = await ascolto.microfono("Alfred (sveglia)")
         flusso = riconoscitore.create_stream()
         precedente = collections.deque(maxlen=int(PRIMA_S * ascolto.FREQUENZA / ascolto.BLOCCO))
         try:
@@ -122,7 +117,7 @@ class Sveglia:
                 if self._sospesa.is_set():
                     precedente.clear()
                     continue
-                blocco = np.frombuffer(dati, np.int16).astype(np.float32) / 32768
+                blocco = ascolto.blocco(dati)
                 precedente.append(blocco)
                 flusso.accept_waveform(ascolto.FREQUENZA, blocco)
                 scattata = False
@@ -148,19 +143,10 @@ class Sveglia:
 
     async def _frase_dopo_il_nome(self, processo, gia_sentito: np.ndarray) -> None:
         """Continua a registrare dallo stesso microfono fino al silenzio, poi verifica."""
-        imp = ascolto._impostazioni()
-        blocchi, inizio, ultimo_controllo = [gia_sentito], time.monotonic(), 0.0
-        while True:
-            dati = await processo.stdout.readexactly(ascolto.BLOCCO * 2)
-            blocchi.append(np.frombuffer(dati, np.int16).astype(np.float32) / 32768)
-            trascorso = time.monotonic() - inizio
-            if trascorso - ultimo_controllo < ascolto.CONTROLLO_OGNI_S:
-                continue
-            ultimo_controllo = trascorso
-            _, silenzio = await asyncio.to_thread(ascolto._parla_ora, np.concatenate(blocchi), trascorso)
-            if silenzio >= imp["fine_frase_s"] or trascorso >= imp["durata_massima_s"]:
-                break
-        testo = await ascolto.trascrivi(np.concatenate(blocchi))
+        audio = await ascolto.fino_al_silenzio(processo, gia_sentito)
+        if audio is None:
+            return
+        testo = await ascolto.trascrivi(audio)
         esito, comando = verifica(testo)
         if esito == "no":
             log.info("falso allarme scartato: «%s»", testo)

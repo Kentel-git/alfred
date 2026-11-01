@@ -19,7 +19,6 @@ import time
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-
 from datetime import date, datetime, timedelta
 
 from alfred import config
@@ -244,7 +243,6 @@ async def _impedisci_standby(_parametri: dict) -> dict:
 @dataclass
 class Azione:
     nome: str
-    descrizione: str  # per il cervello
     # Richiesta di conferma, se sensibile: testo fisso o funzione che lo
     # prepara dai parametri (es. il titolo dell'evento da eliminare).
     domanda: str | Callable[[dict], Awaitable[str]]
@@ -253,46 +251,43 @@ class Azione:
 
 
 AZIONI = {a.nome: a for a in [
-    Azione("modalita_gioco", "Avvia la modalità gioco (apre Battle.net e CurseForge).", "", _modalita_gioco),
-    Azione("apri_obs", "Apre OBS Studio.", "", _apri_obs),
-    Azione(
-        "avvia_diretta", "Avvia la diretta in OBS.", "Avvio la diretta, signore? Mi basta un sì.",
+    Azione("modalita_gioco", "", _modalita_gioco),
+    Azione("apri_obs", "", _apri_obs),
+    Azione("avvia_diretta", "Avvio la diretta, signore? Mi basta un sì.",
         _obs("StartStream", None, lambda: _una("In onda, signore. Il pubblico è tutto suo.", "Diretta avviata, signore. Si va in scena."),
              "La diretta è già in corso, signore."),
         sensibile=True,
     ),
-    Azione(
-        "ferma_diretta", "Termina la diretta in OBS.", "Chiudo la diretta, signore? Mi basta un sì.",
+    Azione("ferma_diretta", "Chiudo la diretta, signore? Mi basta un sì.",
         _obs("StopStream", None, lambda: _una("Diretta conclusa, signore. Un'altra serata consegnata ai posteri.", "Siamo fuori onda, signore. Ottimo lavoro."),
              "Non c'è nessuna diretta in corso, signore."),
         sensibile=True,
     ),
-    Azione("avvia_registrazione", "Avvia la registrazione in OBS.", "",
+    Azione("avvia_registrazione", "",
            _obs("StartRecord", None, lambda: _una("Registrazione avviata, signore.", "Si registra, signore. Ogni parola sarà conservata."),
                 "Sto già registrando, signore.")),
-    Azione("ferma_registrazione", "Ferma la registrazione in OBS.", "",
+    Azione("ferma_registrazione", "",
            _obs("StopRecord", None, lambda: "Registrazione fermata e messa al sicuro, signore.",
                 "Non c'è nessuna registrazione in corso, signore.")),
-    Azione("pausa_registrazione", "Mette in pausa la registrazione in OBS.", "",
+    Azione("pausa_registrazione", "",
            _obs("PauseRecord", None, lambda: "Registrazione in pausa, signore.",
                 "Non c'è una registrazione da mettere in pausa, signore.")),
-    Azione("riprendi_registrazione", "Riprende la registrazione in pausa in OBS.", "",
+    Azione("riprendi_registrazione", "",
            _obs("ResumeRecord", None, lambda: "Riprendo a registrare, signore.",
                 "Non c'è una registrazione in pausa, signore.")),
-    Azione("invia_telegram", "Invia un messaggio Telegram a Pietro. Parametro: testo.", "", _invia_telegram),
-    Azione("leggi_agenda", "Impegni di un giorno. Parametro: giorno (oggi, domani, nome del giorno o AAAA-MM-GG).", "", _leggi_agenda),
-    Azione("crea_evento", "Crea un evento in agenda.", "", _crea_evento),
-    Azione("sposta_evento", "Sposta un evento dell'agenda.", "", _sposta_evento),
-    Azione("elimina_evento", "Elimina un evento dall'agenda.", _domanda_elimina, _elimina_evento, sensibile=True),
-    Azione("sveglia_spenta", "Alfred smette di ascoltare il proprio nome (microfono chiuso).", "",
+    Azione("invia_telegram", "", _invia_telegram),
+    Azione("leggi_agenda", "", _leggi_agenda),
+    Azione("crea_evento", "", _crea_evento),
+    Azione("sposta_evento", "", _sposta_evento),
+    Azione("elimina_evento", _domanda_elimina, _elimina_evento, sensibile=True),
+    Azione("sveglia_spenta", "",
            lambda _p: _sveglia(False)),
-    Azione("sveglia_accesa", "Alfred torna ad ascoltare il proprio nome.", "", lambda _p: _sveglia(True)),
-    Azione("sospendi_computer", "Mette subito il computer in standby.",
-           "Metto il computer in standby, signore? Da quel momento non potrò risponderle, nemmeno su Telegram.",
+    Azione("sveglia_accesa", "", lambda _p: _sveglia(True)),
+    Azione("sospendi_computer", "Metto il computer in standby, signore? Da quel momento non potrò risponderle, nemmeno su Telegram.",
            _sospendi, sensibile=True),
-    Azione("consenti_standby", "Permette di nuovo lo standby automatico con l'alimentatore.", "", _consenti_standby),
-    Azione("impedisci_standby", "Con l'alimentatore collegato il computer non va in standby da solo (predefinito).", "", _impedisci_standby),
-    Azione("cambia_scena", "Cambia la scena di OBS. Parametro: scena (nome, anche approssimativo).", "", _cambia_scena),
+    Azione("consenti_standby", "", _consenti_standby),
+    Azione("impedisci_standby", "", _impedisci_standby),
+    Azione("cambia_scena", "", _cambia_scena),
 ]}
 
 

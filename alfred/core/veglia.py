@@ -14,15 +14,13 @@ Due modi, a seconda del desktop:
 """
 
 import asyncio
-import json
 import logging
 import shutil
 import subprocess
 from pathlib import Path
 
-from alfred.config import CARTELLA_STATO
+from alfred import config
 
-FILE_STATO = CARTELLA_STATO / "veglia.json"
 CHIAVE_DMS = "acSuspendTimeout"
 log = logging.getLogger("alfred.veglia")
 
@@ -38,15 +36,11 @@ def con_alimentatore() -> bool:
 
 
 def _stato() -> dict:
-    try:
-        return json.loads(FILE_STATO.read_text())
-    except (OSError, ValueError):
-        return {}
+    return config.leggi_stato("veglia.json")
 
 
 def _salva(**valori) -> None:
-    CARTELLA_STATO.mkdir(parents=True, exist_ok=True)
-    FILE_STATO.write_text(json.dumps(_stato() | valori))
+    config.salva_stato("veglia.json", **valori)
 
 
 def _dms(*argomenti: str) -> str | None:

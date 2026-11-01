@@ -15,7 +15,10 @@ leggili prima di lavorare e aggiorna la roadmap quando chiudi un punto.
   `~/.config/alfred/secrets.env`, mai nel repo.
 - Solo dipendenze libere. Il cervello `claude -p` è il default ma resta un
   adattatore sostituibile.
-- Il servizio ascolta solo su 127.0.0.1.
+- Il servizio ascolta solo su 127.0.0.1 e rifiuta Origin e Host estranei
+  (`origine_fidata` in `alfred/core/server.py`): non indebolire questi controlli.
+- Prima di ogni commit: `.venv/bin/python -m tests.test_regole` (o `pytest`).
+  Se cambi una regola (comandi, sveglia, economo, date), aggiorna il test.
 - Niente materiale protetto da copyright (loghi, immagini, musiche DC/Batman):
   il tema è "maggiordomo britannico", con risorse originali.
 - Riserve: ogni funzione che usa un modello deve passare dall'economo

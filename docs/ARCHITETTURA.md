@@ -15,7 +15,9 @@ impeccabile.
 3. **Cervello intercambiabile.** Il default è `claude -p` (Claude Code in modalità
    non interattiva). Il cervello è un adattatore: chi non ha Claude Code potrà
    usare un modello locale (es. Ollama) senza toccare il resto.
-4. **Locale.** Il servizio ascolta solo su `127.0.0.1`.
+4. **Locale.** Il servizio ascolta solo su `127.0.0.1` e accetta solo l'host
+   `127.0.0.1`/`localhost` e, dai browser, solo l'Origin del proprio HUD: una
+   pagina web qualunque non può leggerlo né comandarlo.
 5. **Azioni sensibili confermate.** Inviare messaggi, avviare/fermare live:
    Alfred chiede conferma (configurabile per azione).
 

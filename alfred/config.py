@@ -1,5 +1,6 @@
 """Lettura della configurazione utente (~/.config/alfred/config.toml)."""
 
+import json
 import os
 import tomllib
 from pathlib import Path
@@ -29,6 +30,20 @@ def carica() -> dict:
             for sezione, valori in tomllib.load(f).items():
                 config.setdefault(sezione, {}).update(valori)
     return config
+
+
+def leggi_stato(nome: str) -> dict:
+    """Piccoli file JSON di stato in ~/.local/state/alfred (es. "veglia.json")."""
+    try:
+        return json.loads((CARTELLA_STATO / nome).read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def salva_stato(nome: str, **valori) -> None:
+    """Aggiorna le chiavi indicate, lasciando le altre come sono."""
+    CARTELLA_STATO.mkdir(parents=True, exist_ok=True)
+    (CARTELLA_STATO / nome).write_text(json.dumps(leggi_stato(nome) | valori))
 
 
 def segreto(nome: str) -> str | None:

@@ -7,36 +7,30 @@ conversazione sopravvive ai riavvii del servizio e l'HUD la ritrova intatta.
 import asyncio
 import json
 import logging
+import tempfile
 import time
 from collections.abc import Awaitable, Callable
 from datetime import datetime
+from pathlib import Path
 
 from alfred import config
 from alfred.brain.claude import CervelloClaude
 from alfred.brain.economo import RISPOSTE_AUSTERITA, Economo
 from alfred.config import CARTELLA_STATO
-from alfred.core import comandi, limiti, meteo
+from alfred.core import comandi, limiti, meteo, parole
 from alfred.core.azioni import Gestore, descrizione_per_riferire
 from alfred.tools import telegram
-import tempfile
-from pathlib import Path
-
 from alfred.voce import ascolto, parola, sveglia
 
 FILE_CONVERSAZIONE = CARTELLA_STATO / "conversazione.json"
 MAX_MESSAGGI = 100
-
-GIORNI = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
-MESI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio",
-        "agosto", "settembre", "ottobre", "novembre", "dicembre"]
 
 log = logging.getLogger("alfred.conversazione")
 
 
 def _contesto(origine: str) -> str:
     adesso = datetime.now()
-    parti = [f"{GIORNI[adesso.weekday()]} {adesso.day} {MESI[adesso.month - 1]} {adesso.year}, "
-             f"ore {adesso.hour}:{adesso.minute:02d}"]
+    parti = [f"{parole.giorno_esteso(adesso.date())} {adesso.year}, ore {adesso.hour}:{adesso.minute:02d}"]
     if luogo := (meteo.ultimo() or {}).get("luogo"):
         parti.append(f"computer a {luogo}")
     if origine == "telegram":
@@ -75,7 +69,7 @@ class Conversazione:
         )
         self.occupato = False
         self.azioni = Gestore(self._invia_da_azioni)
-        # Da dove arriva l'ultimo messaggio di Pietro ("hud" o "telegram"):
+        # Da dove arriva l'ultimo messaggio di Pietro ("hud", "telegram" o "voce"):
         # risposte ed esiti tornano lì.
         self._origine = "hud"
         self._ascolto: ascolto.Ascolto | None = None
@@ -154,7 +148,8 @@ class Conversazione:
         self.messaggi.append(messaggio)
         self._salva()
         if esito:
-            self._da_riferire.append(descrizione_per_riferire(esito))
+            # Solo gli ultimi: dopo una diretta piena di clic non si mandano centinaia di righe a Claude.
+            self._da_riferire = [*self._da_riferire, descrizione_per_riferire(esito)][-10:]
         await self._invia({"tipo": "messaggio", "messaggio": messaggio})
         if a_telegram and self._origine == "telegram":
             await _a_telegram(testo, vocale=self._vocale_telegram)
@@ -249,26 +244,12 @@ class Conversazione:
     async def azione_da_hud(self, nome: str, parametri: dict) -> None:
         """Pulsanti dell'HUD."""
         self._origine = "hud"
-        self._ascolto: ascolto.Ascolto | None = None
-        self._discorso: parola.Discorso | None = None
-        self._vocale_telegram = False  # l'ultimo messaggio Telegram era un vocale
-        # Sentendo il suo nome mentre parla, Alfred si zittisce subito: aspettare la
-        # fine della frase vorrebbe dire aspettare il silenzio, che con la sua
-        # voce in sottofondo non arriverebbe.
-        self.sveglia = sveglia.Sveglia(self._chiamato, quando_forse=self.zittisci)
         esito = await self.azioni.richiedi(nome, parametri)
         if not esito.get("in_attesa_di_conferma"):
             await self.annuncia(esito["messaggio"], esito)
 
     async def conferma_da_hud(self, si: bool, id_attesa: str) -> None:
         self._origine = "hud"
-        self._ascolto: ascolto.Ascolto | None = None
-        self._discorso: parola.Discorso | None = None
-        self._vocale_telegram = False  # l'ultimo messaggio Telegram era un vocale
-        # Sentendo il suo nome mentre parla, Alfred si zittisce subito: aspettare la
-        # fine della frase vorrebbe dire aspettare il silenzio, che con la sua
-        # voce in sottofondo non arriverebbe.
-        self.sveglia = sveglia.Sveglia(self._chiamato, quando_forse=self.zittisci)
         if esito := await self.azioni.conferma(si, id_attesa):
             await self.annuncia(esito["messaggio"], esito)
 

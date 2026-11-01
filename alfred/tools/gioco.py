@@ -16,12 +16,7 @@ import psutil
 
 def _aperta(processo: str) -> bool:
     processo = processo.lower()
-    for p in psutil.process_iter(["name", "cmdline"]):
-        nome = (p.info["name"] or "").lower()
-        riga = " ".join(p.info["cmdline"] or []).lower()
-        if processo in nome or (processo in riga and "alfred" not in riga):
-            return True
-    return False
+    return any(processo in (p.info["name"] or "").lower() for p in psutil.process_iter(["name"]))
 
 
 def _lancia(avvio: str | list[str]) -> None:

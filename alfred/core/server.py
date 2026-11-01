@@ -26,6 +26,7 @@ import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from watchfiles import awatch
 
 from alfred import __version__, config
@@ -178,10 +179,29 @@ async def ciclo_di_vita(_app: FastAPI):
 app = FastAPI(
     title="Alfred", version=__version__, docs_url=None, redoc_url=None, lifespan=ciclo_di_vita
 )
+# Solo "localhost" come host: blocca i siti che si fingono localhost (DNS rebinding).
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
+
+
+def origine_fidata(origine: str | None) -> bool:
+    """I browser mandano sempre Origin: deve essere l'HUD di Alfred. Senza Origin
+    è un programma locale (server MCP, script), che può già fare ben altro."""
+    porta = config.carica()["generale"]["porta"]
+    return origine is None or origine in (f"http://127.0.0.1:{porta}", f"http://localhost:{porta}")
+
+
+@app.middleware("http")
+async def solo_da_alfred(richiesta, prosegui):
+    if not origine_fidata(richiesta.headers.get("origin")):
+        return JSONResponse({"errore": "origine non ammessa"}, status_code=403)
+    return await prosegui(richiesta)
 
 
 @app.websocket("/ws")
 async def canale(ws: WebSocket):
+    if not origine_fidata(ws.headers.get("origin")):
+        await ws.close(code=1008)  # "violazione delle regole": pagina di un altro sito
+        return
     await ws.accept()
     diffusore.client.add(ws)
     await diffusore.invia({"tipo": "benvenuto", "avvio": ID_AVVIO, "dati": _stato()}, solo=ws)
@@ -221,11 +241,6 @@ async def canale(ws: WebSocket):
         diffusore.client.discard(ws)
 
 
-@app.get("/api/stato")
-def stato():
-    return _stato()
-
-
 @app.get("/api/sistema")
 def dati_sistema():
     return sistema.leggi()
@@ -248,7 +263,7 @@ async def eventi_agenda(da: str, a: str, calendari: str = ""):
         richiesti = [c.strip() for c in calendari.split(",") if c.strip()] or None
         consultati, altri = await agenda.scegli_calendari(richiesti)
         return {
-            "eventi": await agenda.eventi(inizio, fine, richiesti),
+            "eventi": await agenda.eventi_di(consultati, inizio, fine),
             "calendari_consultati": [c["nome"] for c in consultati],
             "altri_calendari": [c["nome"] for c in altri],
         }
@@ -282,6 +297,7 @@ def avvia() -> None:
     logging.getLogger("watchfiles").setLevel(logging.WARNING)
     # httpx registra gli indirizzi completi, e quelli di Telegram contengono il token.
     logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpx2").setLevel(logging.WARNING)  # usato da Hugging Face
     # Avvisi innocui delle librerie vocali (cambi di lingua, pkg_resources).
     logging.getLogger("phonemizer").setLevel(logging.ERROR)
     warnings.filterwarnings("ignore", message="pkg_resources is deprecated")

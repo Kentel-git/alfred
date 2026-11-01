@@ -14,10 +14,9 @@ from alfred import config
 
 FILE_PID = config.CARTELLA_RUNTIME / "finestra.pid"
 
-PAGINA_ATTESA = """<!doctype html><html><body style="background:#0d1117;color:#c9b37e;
-font-family:Georgia,serif;display:flex;align-items:center;justify-content:center;
-height:100vh;margin:0;font-size:1.6rem">
-<p>Un momento, signore: sto ancora indossando i guanti bianchi…</p></body></html>"""
+PAGINA_ATTESA = """<!doctype html><html><body style="background:#03070a;color:#4fd8ff;margin:0;height:100vh;
+display:flex;align-items:center;justify-content:center;font-family:monospace;letter-spacing:.3em;font-size:1rem">
+<p>◆ ALFRED SI STA PREPARANDO…</p></body></html>"""
 
 
 def _pid_vivo() -> int | None:
@@ -32,7 +31,9 @@ def _pid_vivo() -> int | None:
 
 
 def toggle() -> None:
-    """Mostra o nasconde la finestra; se non è mai stata aperta la avvia."""
+    """Mostra o nasconde la finestra; se non è mai stata aperta la avvia.
+    Se il servizio è spento lo accende: richiamare Alfred vuol dire volerlo in servizio."""
+    subprocess.run(["systemctl", "--user", "start", "--no-block", "alfred-core"], check=False)
     pid = _pid_vivo()
     if pid:
         os.kill(pid, signal.SIGUSR1)
@@ -91,7 +92,7 @@ def avvia() -> None:
         hardware_acceleration_policy=WebKit2.HardwareAccelerationPolicy.ALWAYS,
     )
     vista = WebKit2.WebView(settings=impostazioni)
-    vista.set_background_color(Gdk.RGBA(0.05, 0.07, 0.09, 1))
+    vista.set_background_color(Gdk.RGBA(0.012, 0.027, 0.039, 1))  # il fondo dell'HUD
     finestra.add(vista)
 
     def riprova():
@@ -101,7 +102,7 @@ def avvia() -> None:
     def caricamento_fallito(_vista, _evento, uri, _errore):
         # Il servizio non risponde ancora: pagina d'attesa e nuovo tentativo.
         vista.load_alternate_html(PAGINA_ATTESA, uri, None)
-        GLib.timeout_add_seconds(2, riprova)
+        GLib.timeout_add(500, riprova)
         return True
 
     vista.connect("load-failed", caricamento_fallito)

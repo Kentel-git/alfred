@@ -25,10 +25,18 @@ def giorno_esteso(d: date) -> str:
     return f"{GIORNI[d.weekday()]} {d.day} {MESI[d.month - 1]}"
 
 
+def orario(istante: datetime) -> str:
+    return f"{istante.hour}:{istante.minute:02d}" if istante.minute else str(istante.hour)
+
+
 def ora(istante: datetime) -> str:
     articolo = "all'" if istante.hour in (1, 8, 11) else "alle "
-    minuti = f":{istante.minute:02d}" if istante.minute else ""
-    return f"{articolo}{istante.hour}{minuti}"
+    return articolo + orario(istante)
+
+
+def tra(minuti: int) -> str:
+    nomi = {15: "un quarto d'ora", 30: "mezz'ora", 45: "tre quarti d'ora", 60: "un'ora"}
+    return "tra un momento" if minuti <= 1 else f"tra {nomi.get(minuti, f'{minuti} minuti')}"
 
 
 def quando(evento: dict, con_giorno: bool = True) -> str:

@@ -57,6 +57,9 @@ porta = 4455
 # Se il server ha la password: ALFRED_OBS_PASSWORD in secrets.env.
 # Comando per aprire OBS, es. ["obs"] oppure ["flatpak", "run", "com.obsproject.Studio"]
 comando_avvio = ["obs"]
+# Fonti browser che mostrano la chat di YouTube: "chat: <link della diretta>"
+# le aggiorna tutte insieme.
+# fonti_chat = ["Chat"]
 
 [agenda]
 # Google Calendar: vedi docs/AGENDA.md.
@@ -64,3 +67,13 @@ comando_avvio = ["obs"]
 # quelli dell'HUD e di "cosa ho domani". Gli altri visibili Alfred li consulta
 # solo se li nomini. Senza questa riga: tutti i calendari visibili.
 # calendari = ["Lavoro", "Famiglia"]
+
+[iniziativa]
+# Ore di silenzio: Alfred non parla di sua iniziativa (notifica muta, o Telegram senza suono).
+silenzio = [23, 8]
+# Promemoria: minuti prima degli eventi dei calendari personali.
+anticipo_minuti = 15
+# anticipi = { "Turni" = 60 }
+# Calendario delle dirette: prima di ognuna Alfred apre OBS e propone la rassegna delle fonti.
+# calendario_dirette = "Le mie dirette"
+anticipo_dirette = 30

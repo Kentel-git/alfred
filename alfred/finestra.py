@@ -48,7 +48,7 @@ def toggle() -> None:
         )
 
 
-def _avvisa(titolo: str, testo: str) -> None:
+def avvisa_desktop(titolo: str, testo: str) -> None:
     if shutil.which("notify-send"):
         subprocess.run(["notify-send", "-a", "Alfred", titolo, testo], check=False)
 
@@ -61,13 +61,13 @@ def gestisci_servizio(comando: str) -> None:
         os.kill(pid, signal.SIGTERM)  # la finestra ripartirà con Mod+A
     if comando == "spegni":
         subprocess.run(["systemctl", "--user", "stop", "alfred-core"], check=False)
-        _avvisa("Alfred si è congedato", "Il servizio è fermo. Per richiamarlo: Alfred: riavvia.")
+        avvisa_desktop("Alfred si è congedato", "Il servizio è fermo. Per richiamarlo: Alfred: riavvia.")
     else:
         esito = subprocess.run(["systemctl", "--user", "restart", "alfred-core"], check=False)
         if esito.returncode == 0:
-            _avvisa("Alfred è di nuovo in servizio", "A sua disposizione, signore.")
+            avvisa_desktop("Alfred è di nuovo in servizio", "A sua disposizione, signore.")
         else:
-            _avvisa("Alfred non riparte", "Controllare con: systemctl --user status alfred-core")
+            avvisa_desktop("Alfred non riparte", "Controllare con: systemctl --user status alfred-core")
 
 
 def avvia() -> None:

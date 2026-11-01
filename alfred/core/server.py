@@ -30,8 +30,9 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from watchfiles import awatch
 
 from alfred import __version__, config
-from alfred.brain import FILE_PERSONALITA, FILE_SCHEDA
+from alfred.brain import FILE_DIARIO, FILE_MEMORIA, FILE_PERSONALITA, FILE_SCHEDA
 from alfred.core import limiti, meteo, sistema, telegram_ponte, veglia
+from alfred.core.iniziativa import Iniziativa
 from alfred.core.azioni import agenda_per_hud
 from alfred.core.conversazione import Conversazione
 from alfred.voce import ascolto, parola
@@ -144,7 +145,7 @@ async def _osserva_file() -> None:
             meteo.svuota_cache()
             await diffusore.invia({"tipo": "stato", "dati": _stato()})
             await diffusore.invia(await _meteo())
-        if {config.FILE_CONFIG, FILE_PERSONALITA, FILE_SCHEDA} & set(percorsi):
+        if {config.FILE_CONFIG, FILE_PERSONALITA, FILE_SCHEDA, FILE_MEMORIA, FILE_DIARIO} & set(percorsi):
             asyncio.create_task(conversazione.riavvia_cervello())
         modifiche_ui = [p for p in percorsi if CARTELLA_UI in p.parents]
         if modifiche_ui:
@@ -167,6 +168,7 @@ async def ciclo_di_vita(_app: FastAPI):
         asyncio.create_task(parola.prepara()),
         asyncio.create_task(conversazione.sveglia.ascolta_sempre()),
         asyncio.create_task(telegram_ponte.ciclo(conversazione)),
+        asyncio.create_task(Iniziativa(conversazione).ciclo()),
         asyncio.create_task(_osserva_file()),
     ]
     yield
@@ -282,6 +284,14 @@ async def ascolta():
     """Scorciatoia da tastiera: apre il microfono per una frase (o lo chiude)."""
     await conversazione.ascolta()
     return {"ok": True}
+
+
+@app.get("/api/obs/fonti")
+async def fonti_obs():
+    try:
+        return await obs.fonti(config.carica().get("obs", {}))
+    except obs.ObsNonRaggiungibile:
+        return {"errore": "OBS è chiuso"}
 
 
 @app.get("/api/obs")

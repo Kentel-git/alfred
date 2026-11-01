@@ -40,10 +40,11 @@ Ogni fase produce qualcosa di usabile da sola.
 - [ ] cancellazione dell'eco (PipeWire) per interromperlo anche senza dire il suo nome, se servirà
 
 ## Fase 4 — Alfred di sua iniziativa
-- [ ] memoria a lungo termine: cose che Alfred impara su Pietro oltre la scheda
-- [ ] briefing del mattino
-- [ ] promemoria (agenda, live in arrivo)
-- [ ] avvisi su Telegram quando si è lontani dal PC
+- [x] presenza: schermo bloccato (logind) → Telegram; ore di silenzio (23-8) → notifica muta o Telegram senza suono
+- [x] promemoria dell'agenda a costo zero (15 minuti prima, 60 per i turni)
+- [x] dirette: con il calendario "Lore is Magic" Alfred apre OBS mezz'ora prima e propone la rassegna; strumenti fonti_obs e aggiorna_chat ("chat: <link>" a costo zero)
+- [x] briefing alla prima apertura della giornata (dopo le 8), detto a voce, senza modello
+- [x] memoria: "ricordati che…" in memoria.md; diario quotidiano (un riassunto di Haiku) e conversazione nuova ogni mattina
 
 ## Più avanti
 - [ ] tema "maniero" (grafica e suoni originali, nessun materiale DC)

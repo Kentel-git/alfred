@@ -59,14 +59,14 @@ async def chiama(metodo: str, attesa_http: float = 40, **parametri) -> dict | li
     return dati["result"]
 
 
-async def invia(testo: str, conferma_id: str | None = None) -> None:
-    """Scrive a Pietro. Con conferma_id aggiunge i pulsanti Sì / No."""
+async def invia(testo: str, conferma_id: str | None = None, silenzioso: bool = False) -> None:
+    """Scrive a Pietro. Con conferma_id aggiunge i pulsanti Sì / No; silenzioso: senza suono."""
     chat = chat_collegata()
     if not chat:
         raise TelegramNonPronto("chat non collegata: scrivere /start al bot")
     pezzi = [testo[i:i + MAX_LUNGHEZZA] for i in range(0, len(testo), MAX_LUNGHEZZA)] or [""]
     for i, pezzo in enumerate(pezzi):
-        parametri = {"chat_id": chat, "text": pezzo}
+        parametri = {"chat_id": chat, "text": pezzo, "disable_notification": silenzioso}
         if conferma_id and i == len(pezzi) - 1:
             parametri["reply_markup"] = {"inline_keyboard": [[
                 {"text": "Sì", "callback_data": f"conferma:{conferma_id}:1"},

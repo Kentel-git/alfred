@@ -89,6 +89,59 @@ def test_solo_l_hud_di_alfred():
     assert not origine_fidata("http://127.0.0.1:7878.sito-malevolo.example")
 
 
+def test_ore_di_silenzio():
+    from datetime import datetime
+
+    from alfred.core.iniziativa import ora_di_silenzio
+
+    with mock.patch("alfred.core.iniziativa._impostazioni", return_value={"silenzio": [23, 8]}):
+        assert ora_di_silenzio(datetime(2026, 11, 1, 23, 30))
+        assert ora_di_silenzio(datetime(2026, 11, 1, 7, 59))
+        assert not ora_di_silenzio(datetime(2026, 11, 1, 8, 0))
+        assert not ora_di_silenzio(datetime(2026, 11, 1, 22, 59))
+
+
+def test_promemoria():
+    from datetime import datetime
+
+    from alfred.core.iniziativa import da_avvisare, testo_promemoria
+
+    adesso = datetime(2026, 11, 1, 18, 0).astimezone()
+    imp = {"anticipo_minuti": 15, "anticipi": {"TURNI REDAZIONE": 60},
+           "calendario_dirette": "Lore is Magic", "anticipo_dirette": 30}
+
+    def evento(id, minuti, calendario="Settimana Pietro", tutto_il_giorno=False):
+        return {"id": id, "titolo": id, "nome_calendario": calendario, "tutto_il_giorno": tutto_il_giorno,
+                "inizio": (adesso + timedelta(minutes=minuti)).isoformat()}
+
+    eventi = [evento("dentista", 15), evento("cena", 40), evento("desk", 60, "TURNI REDAZIONE"),
+              evento("live", 30, "Lore is Magic"), evento("fiera", 0, tutto_il_giorno=True),
+              evento("già detto", 10), evento("passato", -5)]
+    scelti = {e["id"]: diretta for e, diretta in da_avvisare(eventi, adesso, {"già detto"}, imp)}
+    assert scelti == {"dentista": False, "desk": False, "live": True}
+    assert testo_promemoria(eventi[0], adesso, False) == "Signore, tra un quarto d'ora: «dentista»."
+    assert testo_promemoria(eventi[2], adesso, False).startswith("Signore, tra un'ora")
+
+
+def test_link_della_chat():
+    from alfred.core.azioni import ID_VIDEO
+
+    for link in ("https://www.youtube.com/live/AbCdEfGhIj1?si=x", "https://youtu.be/AbCdEfGhIj1",
+                 "https://www.youtube.com/watch?v=AbCdEfGhIj1&t=3", "AbCdEfGhIj1"):
+        m = ID_VIDEO.search(link)
+        assert m and (m[1] or m[2]) == "AbCdEfGhIj1", link
+    assert riconosci("chat: https://youtube.com/live/AbCdEfGhIj1") == \
+        ("aggiorna_chat", {"link": "https://youtube.com/live/AbCdEfGhIj1"})
+
+
+def test_diario_solo_ultimi_giorni():
+    from alfred.brain import _ultimi_giorni
+
+    diario = "\n".join(f"\n## 2026-10-{g:02d}\nGiorno {g}." for g in range(1, 11))
+    ultimi = _ultimi_giorni(diario, 7)
+    assert ultimi.count("## ") == 7 and "Giorno 10." in ultimi and "Giorno 3." not in ultimi
+
+
 if __name__ == "__main__":
     for nome, prova in list(globals().items()):
         if nome.startswith("test_"):

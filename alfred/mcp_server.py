@@ -147,6 +147,28 @@ async def standby(azione: str) -> dict:
     return await _azione(nomi[azione])
 
 
+@server.tool(annotations=SOLA_LETTURA)
+async def fonti_obs() -> dict:
+    """Rassegna della regia prima di una diretta: scena in onda e cosa vi è
+    visibile, ingressi audio silenziati o attivi, link delle fonti della chat."""
+    return await _chiedi_al_core("/api/obs/fonti")
+
+
+@server.tool(annotations=AZIONE)
+async def aggiorna_chat(link: str) -> dict:
+    """Mette nelle fonti della chat di OBS la chat della nuova diretta. link: il
+    link della diretta su YouTube (anche solo l'ID del video)."""
+    return await _azione("aggiorna_chat", {"link": link})
+
+
+@server.tool(annotations=AZIONE)
+async def ricorda(fatto: str) -> dict:
+    """Annota nella memoria a lungo termine un fatto stabile su Pietro (gusti,
+    abitudini, persone, decisioni). Non per gli impegni con data e ora: quelli
+    vanno in agenda."""
+    return await _azione("ricorda", {"fatto": fatto})
+
+
 @server.tool(annotations=AZIONE)
 async def cambia_scena(scena: str) -> dict:
     """Cambia la scena di OBS. Il nome può essere approssimativo: viene

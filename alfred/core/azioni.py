@@ -15,13 +15,14 @@ import asyncio
 import difflib
 import logging
 import random
+import re
 import time
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
-from alfred import config
+from alfred import brain, config
 from alfred.core import parole, veglia
 from alfred.tools import agenda, gioco, obs, telegram
 
@@ -106,6 +107,37 @@ async def _cambia_scena(parametri: dict) -> dict:
         return {"ok": False, "messaggio": f"Siamo già sulla scena «{scelta}», signore."}
     await obs.esegui(cfg, "SetCurrentProgramScene", {"sceneName": scelta})
     return {"ok": True, "messaggio": _una(f"Scena «{scelta}», signore.", f"Ecco «{scelta}», signore.")}
+
+
+ID_VIDEO = re.compile(r"(?:v=|/live/|youtu\.be/|/shorts/)([\w-]{11})|^([\w-]{11})$")
+
+
+async def _aggiorna_chat(parametri: dict) -> dict:
+    """Mette il link della chat della nuova diretta in tutte le fonti della chat."""
+    cfg = config.carica().get("obs", {})
+    fonti = cfg.get("fonti_chat", [])
+    if not fonti:
+        return {"ok": False, "messaggio": "Non so quali fonti di OBS mostrino la chat, signore: manca fonti_chat nella configurazione."}
+    trovato = ID_VIDEO.search((parametri.get("link") or "").strip())
+    if not trovato:
+        return {"ok": False, "messaggio": "Non riconosco quel link, signore. Mi basta quello della diretta su YouTube."}
+    url = f"https://www.youtube.com/live_chat?is_popout=1&v={trovato[1] or trovato[2]}"
+    try:
+        esiti = [await obs.esegui(cfg, "SetInputSettings", {"inputName": f, "inputSettings": {"url": url}}) for f in fonti]
+    except obs.ObsNonRaggiungibile:
+        return {"ok": False, "messaggio": "OBS non è aperto, signore. Lo apro?"}
+    mancanti = [f for f, e in zip(fonti, esiti) if not e["_ok"]]
+    if mancanti:
+        return {"ok": False, "messaggio": f"Non trovo in OBS le fonti {', '.join(mancanti)}, signore: la collezione di scene è quella giusta?"}
+    return {"ok": True, "messaggio": f"Chat aggiornata in {_elenco(fonti)}, signore."}
+
+
+async def _ricorda(parametri: dict) -> dict:
+    fatto = (parametri.get("fatto") or "").strip()
+    if not fatto:
+        return {"ok": False, "messaggio": "Cosa devo ricordare, signore?"}
+    brain.ricorda(fatto)
+    return {"ok": True, "messaggio": _una("Lo terrò a mente, signore.", "Annotato, signore.")}
 
 
 async def _invia_telegram(parametri: dict) -> dict:
@@ -287,6 +319,8 @@ AZIONI = {a.nome: a for a in [
            _sospendi, sensibile=True),
     Azione("consenti_standby", "", _consenti_standby),
     Azione("impedisci_standby", "", _impedisci_standby),
+    Azione("aggiorna_chat", "", _aggiorna_chat),
+    Azione("ricorda", "", _ricorda),
     Azione("cambia_scena", "", _cambia_scena),
 ]}
 

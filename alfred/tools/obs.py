@@ -77,6 +77,31 @@ async def esegui(config_obs: dict, tipo: str, dati: dict | None = None) -> dict:
     return (await _richieste(config_obs, [(tipo, dati)]))[0]
 
 
+async def fonti(config_obs: dict) -> dict:
+    """Rassegna della regia: scena in onda, cosa vi è visibile, ingressi audio
+    silenziati e i link delle fonti della chat."""
+    scena, ingressi = await _richieste(config_obs, [("GetCurrentProgramScene", None), ("GetInputList", None)])
+    nome_scena = scena.get("currentProgramSceneName")
+    nomi = [i["inputName"] for i in ingressi.get("inputs", [])]
+    chat = config_obs.get("fonti_chat", [])
+    risposte = await _richieste(
+        config_obs,
+        [("GetSceneItemList", {"sceneName": nome_scena})]
+        + [("GetInputMute", {"inputName": n}) for n in nomi]
+        + [("GetInputSettings", {"inputName": n}) for n in chat],
+    )
+    elementi, muti, impostazioni = risposte[0], risposte[1:1 + len(nomi)], risposte[1 + len(nomi):]
+    return {
+        "scena_in_onda": nome_scena,
+        "elementi_della_scena": [
+            {"nome": e["sourceName"], "visibile": e["sceneItemEnabled"]} for e in elementi.get("sceneItems", [])
+        ],
+        # Solo gli ingressi audio rispondono a GetInputMute.
+        "audio": {n: ("silenziato" if m["inputMuted"] else "attivo") for n, m in zip(nomi, muti) if m["_ok"]},
+        "link_chat": {n: i.get("inputSettings", {}).get("url", "") for n, i in zip(chat, impostazioni) if i["_ok"]},
+    }
+
+
 async def stato(config_obs: dict) -> dict:
     try:
         diretta, registrazione, scene, versione = await _richieste(

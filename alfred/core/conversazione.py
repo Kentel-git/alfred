@@ -13,13 +13,14 @@ from collections.abc import Awaitable, Callable
 from datetime import datetime
 from pathlib import Path
 
-from alfred import config
-from alfred.brain.claude import CervelloClaude
+from alfred import brain, config
+from alfred.brain.claude import CervelloClaude, chiedi_una_volta
 from alfred.brain.economo import RISPOSTE_AUSTERITA, Economo
 from alfred.config import CARTELLA_STATO
-from alfred.core import comandi, limiti, meteo, parole
+from alfred.core import comandi, iniziativa, limiti, meteo, parole
 from alfred.core.azioni import Gestore, descrizione_per_riferire
-from alfred.tools import telegram
+from alfred.finestra import avvisa_desktop
+from alfred.tools import agenda, telegram
 from alfred.voce import ascolto, parola, sveglia
 
 FILE_CONVERSAZIONE = CARTELLA_STATO / "conversazione.json"
@@ -40,7 +41,14 @@ def _contesto(origine: str) -> str:
     return "[" + " · ".join(parti) + "]"
 
 
-async def _a_telegram(testo: str, conferma_id: str | None = None, vocale: bool = False) -> None:
+DIARIO = ("Sei Alfred, il maggiordomo. Ti do la conversazione di una giornata con {appellativo}. "
+          "Scrivi il tuo diario: da tre a sei righe in italiano, in prima persona, solo ciò che "
+          "varrà la pena ricordare nei giorni seguenti (impegni presi, preferenze emerse, cose da "
+          "seguire). Niente saluti, titoli o formule.")
+
+
+async def _a_telegram(testo: str, conferma_id: str | None = None, vocale: bool = False,
+                      silenzioso: bool = False) -> None:
     try:
         if vocale and parola.disponibile():
             config.CARTELLA_RUNTIME.mkdir(parents=True, exist_ok=True)
@@ -48,7 +56,7 @@ async def _a_telegram(testo: str, conferma_id: str | None = None, vocale: bool =
                 percorso = await parola.in_vocale(testo, Path(cartella) / "risposta.ogg")
                 await telegram.invia_vocale(percorso, testo)
         else:
-            await telegram.invia(testo, conferma_id)
+            await telegram.invia(testo, conferma_id, silenzioso)
     except Exception as errore:
         log.warning("risposta Telegram non inviata: %s", errore)
 
@@ -241,6 +249,57 @@ class Conversazione:
         else:
             await _a_telegram("Perdoni, signore: nel vocale non sono riuscito a distinguere parole.")
 
+    # --- Di sua iniziativa -------------------------------------------------------
+
+    async def di_sua_iniziativa(self, testo: str, bloccato: bool) -> None:
+        """Alfred parla per primo: a voce se Pietro è al computer, con una notifica muta
+        nelle ore di silenzio, su Telegram se lo schermo è bloccato (di notte senza suono)."""
+        messaggio = {"chi": "alfred", "testo": testo, "quando": time.time(), "modello": None}
+        self.messaggi.append(messaggio)
+        self._salva()
+        self._da_riferire = [*self._da_riferire, f"hai detto di tua iniziativa: «{testo}»"][-10:]
+        await self._invia({"tipo": "messaggio", "messaggio": messaggio})
+        silenzio = iniziativa.ora_di_silenzio()
+        if bloccato:
+            await _a_telegram(testo, silenzioso=silenzio)
+        elif silenzio:
+            avvisa_desktop("Alfred", testo)
+        elif discorso := self._parla():
+            discorso.aggiungi(testo)
+            discorso.fine()
+
+    async def nuovo_giorno(self, adesso: datetime) -> None:
+        """Prima apertura della giornata: diario di ieri, conversazione nuova, briefing."""
+        if self.messaggi:
+            giorno = datetime.fromtimestamp(self.messaggi[-1]["quando"]).date()
+            # In austerità niente riassunto: la memoria non vale le ultime riserve.
+            if self.economo.regime(limiti.stato())["nome"] != "austerità":
+                trascrizione = "\n".join(
+                    f"{'Lui' if m['chi'] == 'utente' else 'Alfred'}: {m['testo']}" for m in self.messaggi
+                )
+                try:
+                    riassunto, info = await chiedi_una_volta(
+                        trascrizione, DIARIO.replace("{appellativo}", self.cervello.appellativo))
+                    if limiti.aggiorna(info):
+                        await self._invia(limiti.stato())
+                    if riassunto:
+                        brain.scrivi_diario(giorno, riassunto)
+                except Exception as errore:
+                    log.warning("diario non scritto: %s", errore)
+            await self.nuova()
+        oggi = datetime.combine(adesso.date(), datetime.min.time()).astimezone()
+        try:
+            eventi = await agenda.eventi(oggi, oggi.replace(hour=23, minute=59)) if agenda.pronta() else None
+        except Exception as errore:
+            log.warning("agenda per il briefing non letta: %s", errore)
+            eventi = None
+        try:
+            tempo = await meteo.leggi(config.carica()["meteo"])  # appena avviato non c'è ancora in memoria
+        except Exception:
+            tempo = None
+        await self.di_sua_iniziativa(
+            iniziativa.testo_briefing(adesso, eventi, tempo, limiti.stato()), bloccato=False)
+
     async def azione_da_hud(self, nome: str, parametri: dict) -> None:
         """Pulsanti dell'HUD."""
         self._origine = "hud"
@@ -284,8 +343,9 @@ class Conversazione:
         try:
             riferimenti = ""
             if self._da_riferire:
-                riferimenti = ("[Comandi che " + self.cervello.appellativo + " ti ha dato nel frattempo, "
-                               "eseguiti direttamente: " + "; ".join(self._da_riferire) + "]\n")
+                riferimenti = ("[Nel frattempo, senza passare da te (comandi che " + self.cervello.appellativo
+                               + " ti ha dato ed eseguiti direttamente, o cose dette di tua iniziativa): "
+                               + "; ".join(self._da_riferire) + "]\n")
                 self._da_riferire = []
             async for evento in self.cervello.chiedi(f"{_contesto(origine)}\n{riferimenti}{testo}", modello):
                 match evento["tipo"]:

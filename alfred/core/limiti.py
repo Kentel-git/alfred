@@ -8,9 +8,7 @@ fuori da Alfred.
 """
 
 import asyncio
-import json
 import logging
-import shutil
 import time
 from datetime import date
 
@@ -85,30 +83,11 @@ async def sonda() -> bool:
     if _sonda_in_corso.locked():
         return False
     async with _sonda_in_corso:
-        messaggio = {"type": "user", "message": {"role": "user", "content": "ok"}}
+        from alfred.brain.claude import chiedi_una_volta
+
         try:
-            processo = await asyncio.create_subprocess_exec(
-                shutil.which("claude") or "claude", "-p",
-                "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
-                "--model", "haiku", "--tools", "", "--strict-mcp-config",
-                "--setting-sources", "project", "--no-session-persistence",
-                "--system-prompt", "Rispondi solo: ok",
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.DEVNULL,
-                limit=16 * 1024 * 1024,
-            )
-            uscita, _ = await asyncio.wait_for(
-                processo.communicate((json.dumps(messaggio) + "\n").encode()), 60
-            )
+            _, info = await chiedi_una_volta("ok", "Rispondi solo: ok")
         except (OSError, TimeoutError) as errore:
             log.warning("sonda dei limiti fallita: %s", errore)
             return False
-        for riga in uscita.splitlines():
-            try:
-                evento = json.loads(riga)
-            except ValueError:
-                continue
-            if evento.get("type") == "rate_limit_event":
-                return aggiorna(evento.get("rate_limit_info", {}))
-        return False
+        return aggiorna(info)

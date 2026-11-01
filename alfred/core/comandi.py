@@ -56,6 +56,10 @@ SCENA = re.compile(
 )
 
 
+# Link della chat della diretta, incollato: "chat: https://youtube.com/live/…"
+CHAT = re.compile(r"^\s*(?:alfred[\s,]+)?(?:aggiorna\s+(?:il\s+link\s+della\s+)?)?chat\s*[:,]?\s*(?P<link>https?://\S+)\s*$",
+                  re.IGNORECASE)
+
 # Il testo del messaggio va preso così com'è (non normalizzato).
 TELEGRAM = re.compile(
     r"^\s*(?:alfred[\s,]+)?(?:mandami|inviami|scrivimi|mandami un messaggio|scrivimi un messaggio)"
@@ -75,6 +79,8 @@ def normalizza(testo: str) -> str:
 
 def riconosci(testo: str) -> tuple[str, dict] | None:
     """("conferma"|"annulla"|nome_azione, parametri) oppure None (→ cervello)."""
+    if m := CHAT.match(testo):
+        return "aggiorna_chat", {"link": m["link"]}
     if m := TELEGRAM.match(testo):
         return "invia_telegram", {"testo": m["testo"].strip()}
     t = normalizza(testo)

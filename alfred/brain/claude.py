@@ -26,6 +26,35 @@ CARTELLA_LAVORO = CARTELLA_DATI / "cervello"
 COMANDO_ALFRED = Path(__file__).resolve().parents[2] / "bin" / "alfred"
 
 
+async def chiedi_una_volta(testo: str, sistema: str, modello: str = "haiku") -> tuple[str, dict]:
+    """Domanda secca, senza conversazione né strumenti: (risposta, limiti di utilizzo)."""
+    messaggio = {"type": "user", "message": {"role": "user", "content": testo}}
+    processo = await asyncio.create_subprocess_exec(
+        shutil.which("claude") or "claude", "-p",
+        "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
+        "--model", modello, "--tools", "", "--strict-mcp-config",
+        "--setting-sources", "project", "--no-session-persistence", "--system-prompt", sistema,
+        stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+        limit=16 * 1024 * 1024,
+    )
+    try:
+        uscita, _ = await asyncio.wait_for(processo.communicate((json.dumps(messaggio) + "\n").encode()), 120)
+    except TimeoutError:
+        processo.kill()
+        raise
+    risposta, limiti = "", {}
+    for riga in uscita.splitlines():
+        try:
+            evento = json.loads(riga)
+        except ValueError:
+            continue
+        if evento.get("type") == "rate_limit_event":
+            limiti = evento.get("rate_limit_info", {})
+        elif evento.get("type") == "result" and not evento.get("is_error"):
+            risposta = evento.get("result") or ""
+    return risposta, limiti
+
+
 class CervelloClaude:
     def __init__(self, modello: str, appellativo: str, sessione: str | None = None):
         self.modello = modello

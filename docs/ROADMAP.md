@@ -47,5 +47,6 @@ Ogni fase produce qualcosa di usabile da sola.
 - [x] memoria: "ricordati che…" in memoria.md; diario quotidiano (un riassunto di Haiku) e conversazione nuova ogni mattina
 
 ## Più avanti
-- [ ] tema "maniero" (grafica e suoni originali, nessun materiale DC)
+- [x] tema "ologramma da laboratorio": nucleo ad anelli che segue gli stati di Alfred (riposo, ascolto, pensa, parla, lato cinico) con transizioni morbide; ciano per i dati, ambra per le parole di Alfred
+- [ ] suoni originali (avvio, conferme)
 - [ ] cervello locale alternativo (Ollama)

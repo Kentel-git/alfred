@@ -54,8 +54,10 @@ impeccabile.
   ogni distro). `alfred toggle` la apre se è chiusa e la chiude se è aperta.
   Una regola di niri (`app-id="^alfred$"` → `open-fullscreen true`) la mette a
   schermo intero; niri apre le finestre nuove sullo schermo che ha il focus.
-- **ui/**: HUD in HTML/CSS/JS, servito da alfred-core. Il tema "maniero"
-  arriverà più avanti.
+- **ui/**: HUD in HTML/CSS/JS senza dipendenze, servito da alfred-core (sempre
+  con `Cache-Control: no-cache`). Stile "ologramma da laboratorio": il nucleo ad
+  anelli segue lo stato di Alfred, con colori sfumati (`@property`) e velocità
+  con inerzia. Font liberi in `ui/fonts` (Rajdhani, JetBrains Mono: SIL OFL).
 - **brain/**: interfaccia comune `rispondi(messaggi) → flusso di testo +
   chiamate a strumenti`. L'adattatore `claude` lancia `claude -p` con la
   personalità in `--append-system-prompt`, `--output-format stream-json` e

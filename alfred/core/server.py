@@ -197,7 +197,10 @@ def origine_fidata(origine: str | None) -> bool:
 async def solo_da_alfred(richiesta, prosegui):
     if not origine_fidata(richiesta.headers.get("origin")):
         return JSONResponse({"errore": "origine non ammessa"}, status_code=403)
-    return await prosegui(richiesta)
+    risposta = await prosegui(richiesta)
+    # L'HUD cambia spesso: il browser ricontrolla sempre (le risposte restano 304 se nulla è cambiato).
+    risposta.headers["Cache-Control"] = "no-cache"
+    return risposta
 
 
 @app.websocket("/ws")

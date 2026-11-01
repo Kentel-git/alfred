@@ -11,7 +11,8 @@ parla a voce e che si occupa di agenda, messaggi, giochi e streaming.
 **Stato:** fase 0 (finestra e HUD di base). Installazione: `./installa.sh`, poi `Mod+A` (niri). Vedi [docs/ROADMAP.md](docs/ROADMAP.md) e
 [docs/ARCHITETTURA.md](docs/ARCHITETTURA.md).
 
-**Licenza:** [GPL-3.0-or-later](LICENSE).
+**Licenza:** [GPL-3.0-or-later](LICENSE). I font in `ui/fonts` (Rajdhani,
+JetBrains Mono) sono sotto [SIL Open Font License](ui/fonts/OFL-Rajdhani.txt).
 
 ---
 
@@ -29,4 +30,5 @@ voice); this section is a summary for international readers.
 **Status:** phase 0 (window and basic HUD). Install with `./installa.sh`, then press `Mod+A` (niri). See [docs/ROADMAP.md](docs/ROADMAP.md) and
 [docs/ARCHITETTURA.md](docs/ARCHITETTURA.md) (Italian).
 
-**License:** [GPL-3.0-or-later](LICENSE).
+**License:** [GPL-3.0-or-later](LICENSE). Fonts in `ui/fonts` (Rajdhani,
+JetBrains Mono) are under the SIL Open Font License.

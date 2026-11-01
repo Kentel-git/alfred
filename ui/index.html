@@ -6,99 +6,123 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="stile.css">
 </head>
-<body>
-  <header>
-    <div class="orologio">
-      <div id="ora" class="ora">--:--</div>
-      <div id="data" class="data"></div>
+<body data-stato="riposo">
+  <div class="sfondo"><svg viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice"><g id="piste"></g></svg></div>
+
+  <header class="barra">
+    <div class="marchio">ALFRED<small id="versione">MAGGIORDOMO</small></div>
+    <div class="stato">
+      <i class="led"></i><b id="stato-testo">RIPOSO</b>
+      <span class="sep">//</span><span id="barra-regime">REGIME NORMALE</span>
+      <span class="sep">//</span><span id="barra-veglia">VEGLIA</span>
+      <span class="sep">//</span><span id="barra-luogo">—</span>
     </div>
-    <p id="saluto" class="saluto"></p>
-    <p id="battuta" class="battuta"></p>
+    <div class="ora"><span id="data"></span><strong id="ora">--:--:--</strong></div>
   </header>
 
   <main>
     <aside class="colonna">
-      <article class="riquadro" id="riquadro-agenda" hidden>
-        <h2>L'agenda</h2>
-        <div id="agenda-giorni" class="agenda"></div>
-      </article>
+      <section class="pannello" id="riquadro-meteo" hidden>
+        <h2>METEO <span id="meteo-luogo"></span></h2>
+        <div class="meteo"><span class="gradi" id="meteo-temp"></span><span class="desc" id="meteo-desc"></span></div>
+        <div class="dettagli" id="meteo-dettagli"></div>
+        <div class="giorni" id="meteo-giorni"></div>
+      </section>
+      <section class="pannello riempi" id="riquadro-agenda" hidden>
+        <h2>AGENDA <span id="agenda-calendari"></span></h2>
+        <ul class="agenda" id="agenda"></ul>
+      </section>
+    </aside>
 
-      <article class="riquadro" id="riquadro-regia" hidden>
-        <h2>La regia</h2>
+    <section class="centro">
+      <div>
+        <div class="nucleo">
+          <svg viewBox="-260 -260 520 520">
+            <defs>
+              <radialGradient id="bagliore">
+                <stop offset="0" stop-opacity="0.55" />
+                <stop offset="0.55" stop-opacity="0.12" />
+                <stop offset="1" stop-opacity="0" />
+              </radialGradient>
+            </defs>
+            <circle class="r-tacche" r="238" />
+            <circle class="r-sottile" r="214" />
+            <circle class="r-segmenti intero" r="190" />
+            <circle class="r-segmenti spezzato" r="190" />
+            <circle class="r-tratteggio" r="160" />
+            <circle class="r-interno" r="122" />
+            <circle class="cuore" r="118" />
+            <circle class="increspatura" r="122" />
+            <path class="mirino" d="M0 -252 V-226 M0 252 V226 M-252 0 H-226 M252 0 H226" />
+            <path class="mirino" d="M-136 -136 l14 14 M136 -136 l-14 14 M-136 136 l14 -14 M136 136 l-14 -14" />
+          </svg>
+          <div class="nome">ALFRED</div>
+          <span class="didascalia alto">NUCLEO · 4 STRATI</span>
+          <span class="didascalia basso" id="didascalia">◆ IN ATTESA</span>
+        </div>
+        <div class="onda" id="onda"></div>
+      </div>
+
+      <div class="dialogo" id="messaggi"></div>
+
+      <div class="conferma pannello" id="conferma" hidden>
+        <span id="conferma-domanda"></span>
+        <button class="pulsante principale" id="conferma-si">SÌ</button>
+        <button class="pulsante" id="conferma-no">NO</button>
+      </div>
+
+      <form class="comando" id="modulo" autocomplete="off">
+        <label class="pannello"><span class="prompt">›</span><input id="domanda" type="text" placeholder="Mi dica, signore…" spellcheck="true"></label>
+        <button type="button" class="pannello microfono" id="microfono" title="Parla ad Alfred (Mod+Shift+A)">MIC</button>
+      </form>
+    </section>
+
+    <aside class="colonna">
+      <section class="pannello">
+        <h2>SISTEMA <span id="sistema-acceso"></span></h2>
+        <div class="misure">
+          <div class="misura"><span>CPU</span><div class="barra-sottile"><i id="b-cpu"></i></div><span class="valore" id="v-cpu"></span></div>
+          <div class="misura"><span>TEMP</span><div class="barra-sottile caldo"><i id="b-temp"></i></div><span class="valore" id="v-temp"></span></div>
+          <div class="misura"><span>GPU</span><div class="barra-sottile"><i id="b-gpu"></i></div><span class="valore" id="v-gpu"></span></div>
+          <div class="misura"><span>RAM</span><div class="barra-sottile"><i id="b-ram"></i></div><span class="valore" id="v-ram"></span></div>
+          <div class="misura"><span>DISCO</span><div class="barra-sottile"><i id="b-disco"></i></div><span class="valore" id="v-disco"></span></div>
+          <div class="misura"><span>BATT</span><div class="barra-sottile"><i id="b-batt"></i></div><span class="valore" id="v-batt"></span></div>
+        </div>
+        <canvas class="traccia" id="traccia"></canvas>
+        <div class="misura"><span>RETE</span><span></span><span class="valore" id="v-rete"></span></div>
+      </section>
+
+      <section class="pannello" id="riquadro-regia" hidden>
+        <h2>REGIA <span>OBS</span></h2>
         <div id="regia-chiusa" hidden>
-          <p class="tenue">OBS è chiuso.</p>
-          <button class="pulsante" data-azione="apri_obs">Apri OBS</button>
+          <p class="tenue">OBS È CHIUSO</p>
+          <button class="pulsante" data-azione="apri_obs">APRI OBS</button>
         </div>
         <div id="regia-aperta" hidden>
-          <dl class="misure">
-            <dt>Diretta</dt><dd id="regia-diretta"></dd>
-            <dt>Registrazione</dt><dd id="regia-registrazione"></dd>
-          </dl>
+          <div class="onda-diretta"><span id="regia-diretta"></span><span id="regia-registrazione"></span></div>
           <div class="pulsanti">
             <button class="pulsante" id="pulsante-diretta"></button>
             <button class="pulsante" id="pulsante-registrazione"></button>
           </div>
-          <div id="regia-scene" class="scene"></div>
+          <div class="scene" id="regia-scene"></div>
         </div>
-      </article>
+      </section>
 
-      <article class="riquadro" id="riquadro-meteo" hidden>
-        <h2>Il tempo</h2>
-        <div class="meteo-ora">
-          <span id="meteo-temp" class="grande"></span>
-          <span id="meteo-desc"></span>
+      <section class="pannello" id="riquadro-riserve" hidden>
+        <h2>RISERVE <span>CLAUDE</span></h2>
+        <div class="riserve">
+          <div class="arco"><svg viewBox="0 0 100 56"><path class="arco-fondo" d="M8 50 A42 42 0 0 1 92 50"/><path class="arco-valore" id="arco-sessione" d="M8 50 A42 42 0 0 1 92 50"/></svg><b id="r-sessione">—</b>SESSIONE<br><span class="etichetta" id="rinnovo-sessione"></span></div>
+          <div class="arco"><svg viewBox="0 0 100 56"><path class="arco-fondo" d="M8 50 A42 42 0 0 1 92 50"/><path class="arco-valore" id="arco-settimana" d="M8 50 A42 42 0 0 1 92 50"/></svg><b id="r-settimana">—</b>SETTIMANA<br><span class="etichetta" id="rinnovo-settimana"></span></div>
         </div>
-        <p id="meteo-dettagli" class="tenue"></p>
-        <ul id="meteo-giorni" class="giorni"></ul>
-      </article>
-
-      <article class="riquadro">
-        <h2>La casa</h2>
-        <dl class="misure">
-          <dt>Processore</dt><dd><span id="cpu-uso"></span><div class="barra"><i id="cpu-barra"></i></div></dd>
-          <dt>Temperatura</dt><dd id="cpu-temp"></dd>
-          <dt>Grafica</dt><dd id="gpu-freq"></dd>
-          <dt>Memoria</dt><dd><span id="ram-uso"></span><div class="barra"><i id="ram-barra"></i></div></dd>
-          <dt>Disco</dt><dd id="disco"></dd>
-          <dt>Batteria</dt><dd id="batteria"></dd>
-          <dt>Rete</dt><dd id="rete"></dd>
-          <dt>Standby</dt><dd id="veglia">—</dd>
-        </dl>
-      </article>
+        <p class="etichetta nota-riserve" id="riserve-note"></p>
+      </section>
     </aside>
-
-    <section class="riquadro conversazione">
-      <h2>
-        <span>Conversazione</span>
-        <button id="nuova" class="pulsante-testo" title="Inizia una nuova conversazione">nuova conversazione</button>
-      </h2>
-      <div id="messaggi" class="messaggi"></div>
-      <div id="attesa" class="attesa" hidden></div>
-      <div id="conferma" class="conferma" hidden>
-        <span id="conferma-domanda"></span>
-        <button class="pulsante principale" id="conferma-si">Sì</button>
-        <button class="pulsante" id="conferma-no">No</button>
-      </div>
-      <form id="modulo" class="modulo" autocomplete="off">
-        <input id="domanda" type="text" placeholder="Mi dica, signore…" spellcheck="true">
-        <button type="button" id="microfono" class="microfono" title="Parla ad Alfred (Mod+Shift+A)">🎙</button>
-      </form>
-      <div id="riquadro-riserve" class="riserve" hidden>
-        <span class="etichetta">Le riserve</span>
-        <div class="riserva">
-          <span>Sessione <b id="riserva-sessione"></b></span>
-          <div class="barra"><i id="barra-sessione"></i></div>
-        </div>
-        <div class="riserva">
-          <span>Settimana <b id="riserva-settimana"></b></span>
-          <div class="barra"><i id="barra-settimana"></i></div>
-        </div>
-        <span id="riserve-note" class="nota"></span>
-      </div>
-    </section>
   </main>
 
-  <footer class="tenue">Esc per congedare Alfred</footer>
+  <footer class="piede">
+    <span>ESC CONGEDA · MOD+SHIFT+A PARLA · "ALFRED" PER CHIAMARE</span>
+    <button class="pulsante-testo" id="nuova">NUOVA CONVERSAZIONE</button>
+  </footer>
 
   <script src="app.js"></script>
 </body>

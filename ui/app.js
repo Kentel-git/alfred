@@ -93,6 +93,18 @@ function anima(adesso) {
 }
 anima(prima);
 
+// --- Accensione -----------------------------------------------------------------
+// Gli anelli partono veloci e rallentano fino al riposo con la solita inerzia.
+if (animato) {
+  document.body.classList.add("accensione");
+  document.querySelectorAll(".pannello").forEach((p, i) => p.style.setProperty("--i", i));
+  attuale = { tacche: 90, segmenti: -420, tratteggio: 260, battito: 1.6, onda: 0.9 };
+  ["◆ ACCENSIONE", "◆ ALLINEAMENTO ANELLI", "◆ SISTEMI IN LINEA"].forEach((t, i) => setTimeout(() => avvisa(t, 750), i * 750));
+  setTimeout(() => increspatura.classList.add("via"), 2000);
+  // Tolta a sequenza finita, così i pannelli che compaiono dopo non si rianimano.
+  setTimeout(() => document.body.classList.remove("accensione"), 3200);
+}
+
 // --- Barra di stato e orologio -------------------------------------------------
 function aggiornaOrologio() {
   const adesso = new Date();

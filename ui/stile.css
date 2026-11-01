@@ -205,6 +205,26 @@ body[data-stato="ascolto"] .microfono { color: var(--rosso); text-shadow: 0 0 8p
 .piede { display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.2em; color: var(--tenue); border-top: 1px solid var(--ciano-tenue); padding-top: 0.6rem; }
 
 /* Servizio irraggiungibile: tutto si spegne finché non torna. */
+/* --- Accensione: all'apertura della pagina, una volta sola ------------------
+   Una linea di scansione attraversa lo schermo, gli anelli si accendono dal
+   centro verso l'esterno, poi barra e pannelli compaiono uno dopo l'altro.
+   Le animazioni non hanno "to": finiscono sui valori normali, senza scatti. */
+.accensione::after { content: ""; position: fixed; left: 0; right: 0; top: 0; height: 2px; pointer-events: none; z-index: 10;
+  background: var(--ciano); box-shadow: 0 0 18px 4px var(--ciano-medio); animation: passaggio 1s ease-in-out both; }
+@keyframes passaggio { from { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } to { transform: translateY(100vh); opacity: 0; } }
+.accensione .sfondo { animation: compare 1.4s ease-out both; }
+.accensione .nucleo :is(circle, path):not(.increspatura) { animation: anello 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(0.25s + var(--a) * 0.1s); }
+.accensione .cuore { --a: 0; } .accensione .r-interno { --a: 1; } .accensione .r-tratteggio { --a: 2; } .accensione .r-segmenti { --a: 3; }
+.accensione .r-sottile { --a: 4; } .accensione .r-tacche { --a: 5; } .accensione .mirino { --a: 6; }
+@keyframes anello { from { scale: 0.55; opacity: 0; } 60% { opacity: 1; } }
+.accensione .nome { animation: nome 1.1s 0.7s both; }
+@keyframes nome { from { opacity: 0; letter-spacing: 1.1em; } 40% { opacity: 0.9; } 48% { opacity: 0.2; } 58% { opacity: 1; } }
+.accensione :is(.didascalia, .onda, .dialogo) { animation: compare 0.6s 1s both; }
+.accensione :is(.barra, .piede) { animation: scansione 0.6s 1.1s ease-out both; }
+.accensione .pannello { animation: scansione 0.55s ease-out both; animation-delay: calc(1.25s + var(--i, 0) * 0.1s); }
+@keyframes compare { from { opacity: 0; } }
+@keyframes scansione { from { opacity: 0; clip-path: inset(0 0 100% 0); } 70% { opacity: 1; } to { clip-path: inset(0); } }
+
 body.scollegato main { opacity: 0.3; transition: opacity 0.4s; }
 
-@media (prefers-reduced-motion: reduce) { *, *::before { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } }

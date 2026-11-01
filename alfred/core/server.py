@@ -166,6 +166,7 @@ async def ciclo_di_vita(_app: FastAPI):
         asyncio.create_task(veglia.istanza().sorveglia(diffusore.invia)),
         asyncio.create_task(ascolto.prepara()),
         asyncio.create_task(parola.prepara()),
+        asyncio.create_task(conversazione.cervello.prepara()),
         asyncio.create_task(conversazione.sveglia.ascolta_sempre()),
         asyncio.create_task(telegram_ponte.ciclo(conversazione)),
         asyncio.create_task(Iniziativa(conversazione).ciclo()),

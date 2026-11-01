@@ -116,15 +116,24 @@ class CervelloClaude:
                 self._processo.kill()
         self._processo = None
 
+    async def prepara(self) -> None:
+        """Avvia Claude in anticipo: la prima risposta non paga l'avvio (circa 3 s).
+        Il processo in attesa non consuma token."""
+        async with self._turno:
+            if not self._vivo():
+                await self._avvia()
+
     async def riavvia(self) -> None:
         """Riparte con la stessa conversazione (es. personalità modificata)."""
         async with self._turno:
             await self.ferma()
+            await self._avvia()
 
     async def nuova_conversazione(self) -> None:
         async with self._turno:
             await self.ferma()
             self.sessione = None
+            await self._avvia()
 
     async def chiedi(self, testo: str, modello: str | None = None) -> AsyncIterator[dict]:
         """Manda un messaggio e restituisce gli eventi della risposta:

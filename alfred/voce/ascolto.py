@@ -47,10 +47,11 @@ async def _carica_modello():
             from faster_whisper import WhisperModel
 
             nome = _impostazioni()["modello"]
-            log.info("carico il modello di trascrizione %s", nome)
+            inizio = time.monotonic()
             _modello = await asyncio.to_thread(
                 WhisperModel, nome, device="cpu", compute_type="int8", cpu_threads=8
             )
+            log.info("trascrizione (%s) pronta in %.1f s", nome, time.monotonic() - inizio)
     return _modello
 
 

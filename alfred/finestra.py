@@ -55,11 +55,10 @@ def avvisa_desktop(titolo: str, testo: str) -> None:
 
 def gestisci_servizio(comando: str) -> None:
     """spegni: ferma servizio e finestra (ripartono al prossimo accesso).
-    riavvia: riavvia il servizio (lo avvia se era fermo)."""
-    pid = _pid_vivo()
-    if pid:
-        os.kill(pid, signal.SIGTERM)  # la finestra ripartirà con Mod+A
+    riavvia: riavvia il servizio (lo avvia se era fermo); la finestra resta."""
     if comando == "spegni":
+        if pid := _pid_vivo():
+            os.kill(pid, signal.SIGTERM)  # con "riavvia" invece resta aperta e si ricollega da sola
         subprocess.run(["systemctl", "--user", "stop", "alfred-core"], check=False)
         avvisa_desktop("Alfred si è congedato", "Il servizio è fermo. Per richiamarlo: Alfred: riavvia.")
     else:

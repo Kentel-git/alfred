@@ -14,6 +14,7 @@ import asyncio
 import logging
 import os
 import re
+import time
 from pathlib import Path
 
 import numpy as np
@@ -51,8 +52,9 @@ async def _modello():
         if _kokoro is None:
             from kokoro_onnx import Kokoro
 
-            log.info("carico la voce")
+            inizio = time.monotonic()
             _kokoro = await asyncio.to_thread(Kokoro, str(MODELLO), str(VOCI))
+            log.info("voce pronta in %.1f s", time.monotonic() - inizio)
     return _kokoro
 
 

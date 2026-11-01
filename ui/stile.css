@@ -39,7 +39,7 @@ button { font: inherit; }
     repeating-linear-gradient(90deg, rgba(79, 216, 255, 0.045) 0 1px, transparent 1px 48px); }
 .sfondo svg { width: 100%; height: 100%; }
 .pista { fill: none; stroke: var(--ciano); stroke-width: 1.2; opacity: 0.10; }
-.pista.viva { opacity: 0.55; stroke-dasharray: 60 900; animation: corrente 7s linear infinite; filter: drop-shadow(0 0 4px var(--ciano)); }
+.pista.viva { opacity: 0.55; stroke-width: 1.6; stroke-dasharray: 60 900; animation: corrente 7s linear infinite; }
 .pista.viva:nth-child(2n) { animation-duration: 11s; animation-delay: -3s; }
 .pista.viva:nth-child(3n) { animation-duration: 9s; animation-delay: -6s; }
 @keyframes corrente { to { stroke-dashoffset: -960; } }
@@ -149,7 +149,11 @@ canvas.traccia { width: 100%; height: 2.4rem; display: block; margin: 0.3rem 0 0
 .centro { display: grid; grid-template-rows: 1fr auto auto auto; min-height: 0; justify-items: center; }
 .centro > div:first-child { display: grid; place-items: center; align-content: center; min-height: 0; }
 .nucleo { position: relative; width: min(36rem, 44vh); aspect-ratio: 1; }
-.nucleo svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 0 6px var(--nucleo)); }
+/* Niente filtri sull'SVG: ricalcolati a ogni giro degli anelli, portavano l'HUD a 7 fps. Il bagliore è un alone fisso dietro. */
+.nucleo svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.nucleo .livello { will-change: transform; }
+.nucleo::before { content: ""; position: absolute; inset: -6%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, transparent 38%, color-mix(in srgb, var(--nucleo) 14%, transparent) 46%, transparent 52%, color-mix(in srgb, var(--nucleo) 10%, transparent) 64%, transparent 72%); }
 .nucleo circle, .nucleo path { fill: none; stroke: var(--nucleo); }
 .r-tacche { stroke-width: 10; stroke-dasharray: 1.2 9.27; opacity: 0.5; }
 .r-sottile { stroke-width: 1; opacity: 0.35; }
@@ -160,8 +164,8 @@ body[data-stato="cinico"] .r-segmenti.spezzato { opacity: 0.85; }
 .r-tratteggio { stroke-width: 1.5; stroke-dasharray: 3 6; opacity: 0.6; }
 .r-interno { stroke-width: 2; opacity: 0.9; }
 .mirino { stroke-width: 1.5; opacity: 0.7; }
-.cuore { fill: url(#bagliore) !important; stroke: none !important; }
-#bagliore stop { stop-color: var(--nucleo); }
+.cuore { position: absolute; inset: 27.3%; border-radius: 50%; will-change: transform, opacity;
+  background: radial-gradient(circle closest-side, color-mix(in srgb, var(--nucleo) 55%, transparent), color-mix(in srgb, var(--nucleo) 12%, transparent) 55%, transparent); }
 .increspatura { stroke-width: 2; opacity: 0; }
 .increspatura.via { animation: increspa 1.3s ease-out; }
 @keyframes increspa { from { opacity: 0.9; transform: scale(1); } to { opacity: 0; transform: scale(2.1); } }
@@ -170,7 +174,7 @@ body[data-stato="cinico"] .r-segmenti.spezzato { opacity: 0.85; }
 .didascalia.alto { top: -0.4rem; }
 .didascalia.basso { bottom: -0.4rem; color: var(--nucleo); }
 .onda { display: flex; align-items: center; justify-content: center; gap: 3px; height: 2.6rem; margin-top: 0.6rem; }
-.onda i { width: 3px; height: 6%; background: var(--nucleo); opacity: 0.85; box-shadow: 0 0 6px var(--nucleo); }
+.onda i { width: 3px; height: 100%; transform: scaleY(0.06); background: var(--nucleo); opacity: 0.85; box-shadow: 0 0 6px var(--nucleo); }
 
 /* --- Dialogo ----------------------------------------------------------------- */
 .dialogo { width: min(52rem, 100%); max-height: 34vh; display: flex; flex-direction: column; gap: 0.9rem; overflow-y: auto; scrollbar-width: none; padding: 0.6rem 0 1rem;
@@ -213,7 +217,7 @@ body[data-stato="ascolto"] .microfono { color: var(--rosso); text-shadow: 0 0 8p
   background: var(--ciano); box-shadow: 0 0 18px 4px var(--ciano-medio); animation: passaggio 1s ease-in-out both; }
 @keyframes passaggio { from { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } to { transform: translateY(100vh); opacity: 0; } }
 .accensione .sfondo { animation: compare 1.4s ease-out both; }
-.accensione .nucleo :is(circle, path):not(.increspatura) { animation: anello 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(0.25s + var(--a) * 0.1s); }
+.accensione .nucleo :is(circle, path, .cuore):not(.increspatura) { animation: anello 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(0.25s + var(--a) * 0.1s); }
 .accensione .cuore { --a: 0; } .accensione .r-interno { --a: 1; } .accensione .r-tratteggio { --a: 2; } .accensione .r-segmenti { --a: 3; }
 .accensione .r-sottile { --a: 4; } .accensione .r-tacche { --a: 5; } .accensione .mirino { --a: 6; }
 @keyframes anello { from { scale: 0.55; opacity: 0; } 60% { opacity: 1; } }

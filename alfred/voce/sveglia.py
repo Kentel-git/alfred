@@ -32,6 +32,9 @@ NOME_MODELLO = "epoch-12-avg-2-chunk-16-left-64.int8.onnx"
 # "ALFRED" scomposto nei token del modello (inglese, GigaSpeech).
 PAROLA_CHIAVE = "▁A L F RE D @ALFRED"
 PRIMA_S = 1.5  # audio tenuto prima della parola chiave
+# Il riconoscitore non sente le voci deboli (picco sotto ~0,1): il microfono
+# del portatile, a un metro, ci arriva di rado. Si alza il volume solo per lui.
+PICCO_VOLUTO, GUADAGNO_MAX = 0.3, 20.0
 
 CHIAMATA = re.compile(r"\balfred\b(?!o)", re.IGNORECASE)
 SOLO_NOME = re.compile(r"^\W*(?:ehi\s+|hey\s+)?al\s?fred\w{0,2}\W*$", re.IGNORECASE)
@@ -111,6 +114,7 @@ class Sveglia:
         processo = await ascolto.microfono("Alfred (sveglia)")
         flusso = riconoscitore.create_stream()
         precedente = collections.deque(maxlen=int(PRIMA_S * ascolto.FREQUENZA / ascolto.BLOCCO))
+        livello = 0.05  # picco recente: sale subito, scende piano (mezza vita ~4 s)
         try:
             while self.attiva:
                 dati = await processo.stdout.readexactly(ascolto.BLOCCO * 2)
@@ -119,7 +123,8 @@ class Sveglia:
                     continue
                 blocco = ascolto.blocco(dati)
                 precedente.append(blocco)
-                flusso.accept_waveform(ascolto.FREQUENZA, blocco)
+                livello = max(float(np.abs(blocco).max()), livello * 0.995)
+                flusso.accept_waveform(ascolto.FREQUENZA, blocco * min(PICCO_VOLUTO / max(livello, 1e-3), GUADAGNO_MAX))
                 scattata = False
                 while riconoscitore.is_ready(flusso):
                     riconoscitore.decode_stream(flusso)

@@ -37,21 +37,14 @@
     <section class="centro">
       <div>
         <div class="nucleo">
+          <!-- Gli anelli che girano stanno su livelli propri: la scheda grafica li ruota senza ridisegnarli. -->
+          <svg viewBox="-260 -260 520 520" class="livello" id="giro-tacche"><circle class="r-tacche" r="238" /></svg>
+          <svg viewBox="-260 -260 520 520" class="livello" id="giro-segmenti"><circle class="r-segmenti intero" r="190" /><circle class="r-segmenti spezzato" r="190" /></svg>
+          <svg viewBox="-260 -260 520 520" class="livello" id="giro-tratteggio"><circle class="r-tratteggio" r="160" /></svg>
+          <div class="cuore"></div>
           <svg viewBox="-260 -260 520 520">
-            <defs>
-              <radialGradient id="bagliore">
-                <stop offset="0" stop-opacity="0.55" />
-                <stop offset="0.55" stop-opacity="0.12" />
-                <stop offset="1" stop-opacity="0" />
-              </radialGradient>
-            </defs>
-            <circle class="r-tacche" r="238" />
             <circle class="r-sottile" r="214" />
-            <circle class="r-segmenti intero" r="190" />
-            <circle class="r-segmenti spezzato" r="190" />
-            <circle class="r-tratteggio" r="160" />
             <circle class="r-interno" r="122" />
-            <circle class="cuore" r="118" />
             <circle class="increspatura" r="122" />
             <path class="mirino" d="M0 -252 V-226 M0 252 V226 M-252 0 H-226 M252 0 H226" />
             <path class="mirino" d="M-136 -136 l14 14 M136 -136 l-14 14 M-136 136 l14 -14 M136 136 l-14 -14" />

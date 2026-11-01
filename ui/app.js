@@ -37,7 +37,7 @@ const NOMI_STATO = {
 };
 const INERZIA_S = 0.9;
 const animato = !matchMedia("(prefers-reduced-motion: reduce)").matches;
-const anelli = { tacche: [document.querySelector(".r-tacche")], segmenti: document.querySelectorAll(".r-segmenti"), tratteggio: [document.querySelector(".r-tratteggio")] };
+const anelli = { tacche: $("giro-tacche"), segmenti: $("giro-segmenti"), tratteggio: $("giro-tratteggio") };
 const cuore = document.querySelector(".cuore"), increspatura = document.querySelector(".increspatura"), onda = $("onda");
 for (let i = 0; i < 56; i++) onda.append(document.createElement("i"));
 let obiettivo = PROFILI.riposo, attuale = { ...PROFILI.riposo }, angoli = { tacche: 0, segmenti: 0, tratteggio: 0 }, fase = 0, prima = performance.now();
@@ -79,7 +79,7 @@ function anima(adesso) {
   for (const chiave in attuale) attuale[chiave] += (obiettivo[chiave] - attuale[chiave]) * k;
   for (const chiave in angoli) {
     angoli[chiave] += attuale[chiave] * dt;
-    anelli[chiave].forEach((e) => (e.style.transform = `rotate(${angoli[chiave]}deg)`));
+    anelli[chiave].style.transform = `rotate(${angoli[chiave]}deg)`;
   }
   fase += attuale.battito * dt * 2 * Math.PI;
   cuore.style.transform = `scale(${0.94 + 0.06 * Math.cos(fase)})`;
@@ -87,7 +87,7 @@ function anima(adesso) {
   const t = adesso / 300;
   [...onda.children].forEach((b, i) => {
     const centro = 1 - Math.abs(i - 27.5) / 28;
-    b.style.height = `${6 + 88 * attuale.onda * centro * Math.abs(Math.sin(t + i * 0.7) * Math.cos(t * 1.7 + i * 0.3))}%`;
+    b.style.transform = `scaleY(${0.06 + 0.88 * attuale.onda * centro * Math.abs(Math.sin(t + i * 0.7) * Math.cos(t * 1.7 + i * 0.3))})`;
   });
   if (animato) requestAnimationFrame(anima);
 }

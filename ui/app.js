@@ -317,6 +317,7 @@ function nota(modello, origine) {
   if (origine === "voce") return "A VOCE";
   if (origine === "telegram") return "DA TELEGRAM";
   if (modello === null) return "COMANDO DIRETTO · 0 TOKEN";
+  if (modello === "gratuito") return "CERVELLO DI SCORTA · 0 RISERVE";
   return modello || "";
 }
 

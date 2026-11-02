@@ -15,6 +15,7 @@ from pathlib import Path
 
 from alfred import brain, config
 from alfred.brain.claude import CervelloClaude, chiedi_una_volta
+from alfred.brain import gratuito
 from alfred.brain.economo import RISPOSTE_AUSTERITA, Economo
 from alfred.config import CARTELLA_STATO
 from alfred.core import comandi, iniziativa, limiti, meteo, parole
@@ -45,6 +46,16 @@ DIARIO = ("Sei Alfred, il maggiordomo. Ti do la conversazione di una giornata co
           "Scrivi il tuo diario: da tre a sei righe in italiano, in prima persona, solo ciò che "
           "varrà la pena ricordare nei giorni seguenti (impegni presi, preferenze emerse, cose da "
           "seguire). Niente saluti, titoli o formule.")
+
+# Austerità: il cervello gratuito non ha gli strumenti di Alfred e vede solo
+# gli ultimi messaggi.
+MESSAGGI_AL_GRATUITO = 12
+SENZA_STRUMENTI = (
+    "\n\n## In questo momento\nLe riserve di Claude sono quasi esaurite: stai parlando con un "
+    "cervello di scorta, senza strumenti. Non puoi eseguire azioni, leggere l'agenda né mandare "
+    "messaggi: se te lo chiedono, dillo con garbo e proponi di farlo quando le riserve si rinnovano. "
+    "Rispondi in breve."
+)
 
 
 async def _a_telegram(testo: str, conferma_id: str | None = None, vocale: bool = False,
@@ -272,20 +283,22 @@ class Conversazione:
         """Prima apertura della giornata: diario di ieri, conversazione nuova, briefing."""
         if self.messaggi:
             giorno = datetime.fromtimestamp(self.messaggi[-1]["quando"]).date()
-            # In austerità niente riassunto: la memoria non vale le ultime riserve.
-            if self.economo.regime(limiti.stato())["nome"] != "austerità":
-                trascrizione = "\n".join(
-                    f"{'Lui' if m['chi'] == 'utente' else 'Alfred'}: {m['testo']}" for m in self.messaggi
-                )
+            trascrizione = "\n".join(
+                f"{'Lui' if m['chi'] == 'utente' else 'Alfred'}: {m['testo']}" for m in self.messaggi
+            )
+            istruzioni = DIARIO.replace("{appellativo}", self.cervello.appellativo)
+            # Prima il cervello gratuito; Claude solo se manca, e mai in austerità:
+            # la memoria non vale le ultime riserve.
+            riassunto = await gratuito.chiedi([{"role": "user", "content": trascrizione}], istruzioni)
+            if riassunto is None and self.economo.regime(limiti.stato())["nome"] != "austerità":
                 try:
-                    riassunto, info = await chiedi_una_volta(
-                        trascrizione, DIARIO.replace("{appellativo}", self.cervello.appellativo))
+                    riassunto, info = await chiedi_una_volta(trascrizione, istruzioni)
                     if limiti.aggiorna(info):
                         await self._invia(limiti.stato())
-                    if riassunto:
-                        brain.scrivi_diario(giorno, riassunto)
                 except Exception as errore:
                     log.warning("diario non scritto: %s", errore)
+            if riassunto:
+                brain.scrivi_diario(giorno, riassunto)
             await self.nuova()
         oggi = datetime.combine(adesso.date(), datetime.min.time()).astimezone()
         try:
@@ -323,8 +336,15 @@ class Conversazione:
         origine = self._origine
         modello = self.economo.scegli(testo, limiti.stato())
         if modello is None:
-            # Austerità: Alfred risponde da sé, senza spendere riserve.
-            messaggio = {"chi": "alfred", "testo": RISPOSTE_AUSTERITA[0], "quando": time.time(), "modello": None}
+            # Austerità: risponde il cervello gratuito (senza strumenti), altrimenti
+            # Alfred da sé; in nessun caso si spendono riserve.
+            storia = [{"role": "user" if m["chi"] == "utente" else "assistant", "content": m["testo"]}
+                      for m in self.messaggi[-MESSAGGI_AL_GRATUITO:]]
+            if storia and storia[-1]["role"] == "user":
+                storia[-1]["content"] = f"{_contesto(origine)}\n{storia[-1]['content']}"
+            libera = await gratuito.chiedi(storia, brain.personalita(self.cervello.appellativo) + SENZA_STRUMENTI)
+            messaggio = {"chi": "alfred", "testo": libera or RISPOSTE_AUSTERITA[0], "quando": time.time(),
+                         "modello": "gratuito" if libera else None}
             self.messaggi.append(messaggio)
             self._salva()
             await self._invia({"tipo": "risposta_fine", "messaggio": messaggio})

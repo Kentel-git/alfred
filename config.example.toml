@@ -29,6 +29,15 @@ citta = ""
 quotidiano = "haiku"
 profondo = "sonnet"
 
+[cervello_gratuito]
+# Facoltativo: un endpoint compatibile con le API OpenAI (es. FreeLLMAPI,
+# Ollama, llama.cpp). Scrive il diario di fine giornata e risponde in
+# austerità al posto di Claude, senza strumenti. Vuoto = spento.
+# La chiave, se serve, va in secrets.env: ALFRED_GRATUITO_CHIAVE=...
+url = ""                 # es. "http://127.0.0.1:3001/v1"
+modello = "auto"
+attesa_massima = 60      # secondi
+
 [economia]
 # Le riserve (limiti dell'abbonamento Claude) sono condivise con tutto il resto
 # del tuo lavoro: Alfred si autolimita per non esaurirle.

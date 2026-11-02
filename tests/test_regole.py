@@ -142,6 +142,19 @@ def test_diario_solo_ultimi_giorni():
     assert ultimi.count("## ") == 7 and "Giorno 10." in ultimi and "Giorno 3." not in ultimi
 
 
+def test_cervello_gratuito_spento_o_assente():
+    # None = si torna al comportamento senza cervello gratuito (risposta fissa, diario con Claude).
+    import asyncio
+
+    from alfred import config
+    from alfred.brain import gratuito
+
+    for url in ("", "http://127.0.0.1:9/v1"):  # spento; acceso ma irraggiungibile
+        cfg = config.PREDEFINITI | {"cervello_gratuito": {"url": url, "modello": "auto", "attesa_massima": 2}}
+        with mock.patch.object(config, "carica", return_value=cfg):
+            assert asyncio.run(gratuito.chiedi([{"role": "user", "content": "ciao"}], "sistema")) is None, url
+
+
 if __name__ == "__main__":
     for nome, prova in list(globals().items()):
         if nome.startswith("test_"):

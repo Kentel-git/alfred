@@ -93,12 +93,16 @@ L'**economo** (`alfred/brain/economo.py`) sceglie il modello per ogni compito:
 | Comandi diretti (fase 2: OBS, gioco, Telegram…) | nessuno: riconosciuti ed eseguiti in locale |
 | Conversazione quotidiana | `quotidiano` (Haiku) |
 | Riflessioni, consigli, decisioni, lato cinico | `profondo` (Sonnet), riconosciuti in locale |
-| Sonda delle riserve, riassunti, briefing | Haiku |
+| Sonda delle riserve, briefing | Haiku |
+| Diario di fine giornata | cervello gratuito se configurato, altrimenti Haiku |
 
 E un regime in base alle riserve: **normale**; **parsimonia** (solo modello
 quotidiano) oltre metà settimana o se il consumo corre più del calendario;
 **austerità** (nessun modello, salvo "è importante") oltre l'80% della
 settimana o il 90% della sessione. Soglie in `[economia]` di `config.toml`.
+In austerità, se in `[cervello_gratuito]` c'è un endpoint compatibile OpenAI
+(es. FreeLLMAPI, Ollama), risponde quello, senza strumenti e con gli ultimi
+messaggi (`alfred/brain/gratuito.py`); se non risponde, la frase fissa di sempre.
 Regola di progetto: ogni nuova funzione deve dichiarare quale modello usa, e
 preferire sempre la soluzione senza modello quando basta.
 

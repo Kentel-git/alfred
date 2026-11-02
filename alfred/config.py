@@ -14,6 +14,7 @@ PREDEFINITI = {
     "generale": {"appellativo": "signore", "porta": 7878},
     "meteo": {"citta": ""},
     "cervello": {"quotidiano": "haiku", "profondo": "sonnet"},
+    "cervello_gratuito": {"url": "", "modello": "auto", "attesa_massima": 60},
     "economia": {
         "parsimonia_settimana": 0.5,
         "austerita_settimana": 0.8,

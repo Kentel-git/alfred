@@ -44,7 +44,8 @@ def test_sveglia_distingue_il_nome():
     assert verifica("Alfredi")[0] == "solo_nome"
     assert verifica("Ehi Alfred.")[0] == "solo_nome"
     assert verifica("Mettilo al freddo, nel frigorifero.")[0] == "no"
-    assert verifica("Alfredo è arrivato in ritardo.")[0] == "no"
+    assert verifica("Alfredo mi senti?") == ("chiamata", "mi senti?")
+    assert verifica("È arrivato Alfredo in ritardo.")[0] == "no"
 
 
 def test_economo():

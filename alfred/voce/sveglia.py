@@ -51,7 +51,8 @@ def verifica(testo: str) -> tuple[str, str]:
     """("chiamata", comando) | ("solo_nome", "") | ("no", "") dal testo trascritto."""
     if SOLO_NOME.match(testo):
         return "solo_nome", ""
-    if CHIAMATA.search(testo):
+    # "Alfredo" vale solo a inizio frase: in italiano viene naturale la vocale finale.
+    if CHIAMATA.search(testo) or PREFISSO.match(testo):
         comando = PREFISSO.sub("", testo, count=1).strip()
         return ("chiamata", comando) if comando else ("solo_nome", "")
     return "no", ""

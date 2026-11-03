@@ -27,9 +27,35 @@ CARTELLA_MODELLI = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/sh
 MODELLO = CARTELLA_MODELLI / "kokoro-v1.0.onnx"
 VOCI = CARTELLA_MODELLI / "voices-v1.0.bin"
 PAUSA_S = 0.28
+# Parole inglesi lette con la pronuncia inglese (britannica, come Fable) invece
+# che all'italiana; altre si aggiungono in config.toml, [voce] inglese = [...].
+INGLESE_BASE = ["Notion", "YouTube", "Discord", "Twitch", "streaming", "streamer", "live", "just chatting",
+                "Battle.net", "CurseForge", "Steam", "gaming", "email", "link", "desk", "addon", "raid",
+                "World of Warcraft", "Warcraft", "standby", "podcast", "reel", "post", "feedback"]
 
 _kokoro = None
 _blocco = asyncio.Lock()
+
+
+FILE_PRONUNCE = "pronuncia.json"  # parole imparate parlando con Pietro
+
+
+def parole_note() -> tuple[list[str], list[str]]:
+    """(parole lette all'inglese, parole che Pietro ha voluto all'italiana)."""
+    imparate = config.leggi_stato(FILE_PRONUNCE)
+    return INGLESE_BASE + _impostazioni()["inglese"] + imparate.get("inglese", []), imparate.get("italiano", [])
+
+
+def impara(parole: list[str], inglese: bool) -> list[str]:
+    """Aggiunge parole all'elenco inglese (o a quelle da lasciare all'italiana,
+    così Alfred non lo chiede di nuovo). Restituisce quelle davvero nuove."""
+    inglesi, italiane = parole_note()
+    note = {p.lower() for p in inglesi + italiane}
+    nuove = list(dict.fromkeys(p.strip() for p in parole if p.strip() and p.strip().lower() not in note))
+    if nuove:
+        chiave = "inglese" if inglese else "italiano"
+        config.salva_stato(FILE_PRONUNCE, **{chiave: config.leggi_stato(FILE_PRONUNCE).get(chiave, []) + nuove})
+    return nuove
 
 
 def _impostazioni() -> dict:
@@ -39,6 +65,7 @@ def _impostazioni() -> dict:
         "velocita": 0.92,
         "domande": True,  # intonazione interrogativa corretta
         "salita_domande": 0.35,
+        "inglese": [],
     } | config.carica().get("voce", {})
 
 
@@ -80,6 +107,35 @@ def frasi(testo: str) -> list[str]:
 
 # --- Sintesi -------------------------------------------------------------------
 
+SEGNAPOSTO = "zubbalo"  # parola finta: espeak la legge sempre uguale, qualunque cosa abbia intorno
+
+
+def fonemi(frase: str, inglesi: list[str], vocabolario: dict) -> str:
+    """Fonemi per Kokoro: la frase letta in italiano, ma con le parole inglesi
+    pronunciate all'inglese. Si leggono al posto di un segnaposto, così il resto
+    della frase conserva accenti e ritmo. I segnaposto di cambio lingua di espeak,
+    "(en)" e "(it)", si tolgono: Kokoro li leggerebbe come suoni."""
+    import phonemizer
+
+    def leggi(testo: str, lingua: str) -> str:
+        f = phonemizer.phonemize(testo, lingua, preserve_punctuation=True, with_stress=True,
+                                 language_switch="remove-flags")
+        return "".join(c for c in f if c in vocabolario).strip()
+
+    trovate = []
+    if inglesi:
+        schema = r"(?<!\w)(" + "|".join(re.escape(p) for p in sorted(inglesi, key=len, reverse=True)) + r")(?!\w)"
+        con_segnaposto = re.sub(schema, lambda m: trovate.append(m[1]) or SEGNAPOSTO, frase, flags=re.IGNORECASE)
+    if not trovate:
+        return leggi(frase, "it")
+    italiano, segnaposto = leggi(con_segnaposto, "it"), leggi(SEGNAPOSTO, "it")
+    pezzi = italiano.split(segnaposto)
+    if len(pezzi) != len(trovate) + 1:  # imprevisto: meglio tutta in italiano
+        return leggi(frase, "it")
+    return "".join(p + (leggi(t, "en-gb") if k < len(trovate) else "")
+                   for k, (p, t) in enumerate(zip(pezzi, trovate + [""])))
+
+
 def _domanda(audio: np.ndarray, sr: int, salita: float, coda_s: float = 0.7) -> np.ndarray:
     """Ridisegna la fine della curva d'intonazione: le ultime sillabe salgono."""
     try:
@@ -113,7 +169,8 @@ async def sintetizza(frase: str) -> tuple[np.ndarray, int]:
 
     def lavora():
         voce = sum(p * kokoro.get_voice_style(v) for v, p in imp["voce"].items())
-        audio, sr = kokoro.create(frase, voice=voce, speed=imp["velocita"], lang="it")
+        f = fonemi(frase, parole_note()[0], kokoro.tokenizer.vocab)
+        audio, sr = kokoro.create(f, voice=voce, speed=imp["velocita"], is_phonemes=True)
         audio = _taglia(audio)
         if imp["domande"] and frase.rstrip().endswith("?"):
             audio = _domanda(audio, sr, imp["salita_domande"])

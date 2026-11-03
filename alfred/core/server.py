@@ -136,6 +136,9 @@ async def _osserva_file() -> None:
     cartelle = [CARTELLA_UI, CARTELLA_CODICE]
     if config.CARTELLA_CONFIG.is_dir():
         cartelle.append(config.CARTELLA_CONFIG)
+    config.CARTELLA_STATO.mkdir(parents=True, exist_ok=True)
+    cartelle.append(config.CARTELLA_STATO)  # per le pronunce imparate
+    file_pronunce = config.CARTELLA_STATO / parola.FILE_PRONUNCE
     async for modifiche in awatch(*cartelle, debounce=300):
         percorsi = [Path(p) for _, p in modifiche]
         if any(p.suffix == ".py" and CARTELLA_CODICE in p.parents for p in percorsi):
@@ -145,7 +148,7 @@ async def _osserva_file() -> None:
             meteo.svuota_cache()
             await diffusore.invia({"tipo": "stato", "dati": _stato()})
             await diffusore.invia(await _meteo())
-        if {config.FILE_CONFIG, FILE_PERSONALITA, FILE_SCHEDA, FILE_MEMORIA, FILE_DIARIO} & set(percorsi):
+        if {config.FILE_CONFIG, FILE_PERSONALITA, FILE_SCHEDA, FILE_MEMORIA, FILE_DIARIO, file_pronunce} & set(percorsi):
             asyncio.create_task(conversazione.riavvia_cervello())
         modifiche_ui = [p for p in percorsi if CARTELLA_UI in p.parents]
         if modifiche_ui:

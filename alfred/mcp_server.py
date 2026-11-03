@@ -215,6 +215,14 @@ async def aggiorna_chat(link: str) -> dict:
 
 
 @server.tool(annotations=AZIONE)
+async def impara_pronuncia(parole: list[str], inglese: bool = True) -> dict:
+    """Dopo il sì di Pietro, aggiunge parole o nomi (anche di più termini,
+    es. "Lore is Magic") a quelli che la tua voce pronuncia all'inglese.
+    Con inglese=false li segna da lasciare all'italiana."""
+    return await _azione("impara_pronuncia", {"parole": parole, "inglese": inglese})
+
+
+@server.tool(annotations=AZIONE)
 async def ricorda(fatto: str) -> dict:
     """Annota nella memoria a lungo termine un fatto stabile su Pietro (gusti,
     abitudini, persone, decisioni). Non per gli impegni con data e ora: quelli

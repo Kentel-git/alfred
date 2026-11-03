@@ -178,6 +178,35 @@ def test_notion_testo_e_proprieta():
         assert "Priorità" in str(errore)
 
 
+def test_pronuncia_inglese():
+    from kokoro_onnx.tokenizer import Tokenizer
+
+    from alfred.voce.parola import INGLESE_BASE, fonemi
+
+    vocabolario = Tokenizer().vocab
+    misto = fonemi("Lo streaming su YouTube parte alle 21.", INGLESE_BASE, vocabolario)
+    assert "juː" in misto and "ventˈuno" in misto and "(en)" not in misto and "en" not in misto.split()[1]
+    assert fonemi("Il link è nel linkage.", ["link"], vocabolario).count("lˈɪŋk") == 1  # solo la parola intera
+    italiano = fonemi("Nessuna parola inglese qui.", INGLESE_BASE, vocabolario)
+    assert italiano == fonemi("Nessuna parola inglese qui.", [], vocabolario)
+
+
+def test_impara_pronuncia():
+    import tempfile
+    from pathlib import Path
+
+    from alfred import config
+    from alfred.voce import parola
+
+    with tempfile.TemporaryDirectory() as cartella, mock.patch.object(config, "CARTELLA_STATO", Path(cartella)):
+        assert parola.impara(["Skyborne", "notion", " ", "Skyborne"], True) == ["Skyborne"]  # Notion c'è già
+        assert parola.impara(["post"], False) == []  # già nell'elenco base
+        assert parola.impara(["Andarun"], False) == ["Andarun"]
+        inglesi, italiane = parola.parole_note()
+        assert "Skyborne" in inglesi and italiane == ["Andarun"]
+        assert parola.impara(["andarun", "SKYBORNE"], True) == []  # già decise, in qualunque maiuscola
+
+
 if __name__ == "__main__":
     for nome, prova in list(globals().items()):
         if nome.startswith("test_"):

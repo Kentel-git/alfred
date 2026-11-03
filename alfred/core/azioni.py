@@ -140,6 +140,18 @@ async def _ricorda(parametri: dict) -> dict:
     return {"ok": True, "messaggio": _una("Lo terrò a mente, signore.", "Annotato, signore.")}
 
 
+async def _impara_pronuncia(parametri: dict) -> dict:
+    from alfred.voce import parola
+
+    inglese = parametri.get("inglese", True)
+    nuove = parola.impara(parametri.get("parole") or [], inglese)
+    if not nuove:
+        return {"ok": True, "messaggio": "Le conoscevo già, signore."}
+    elenco = ", ".join(f"«{p}»" for p in nuove)
+    return {"ok": True, "messaggio": f"D'ora in poi pronuncerò {elenco} all'inglese, signore." if inglese
+            else f"Lascerò {elenco} all'italiana, signore, e non glielo chiederò più."}
+
+
 async def _invia_telegram(parametri: dict) -> dict:
     testo = (parametri.get("testo") or "").strip()
     if not testo:
@@ -388,6 +400,7 @@ AZIONI = {a.nome: a for a in [
     Azione("impedisci_standby", "", _impedisci_standby),
     Azione("aggiorna_chat", "", _aggiorna_chat),
     Azione("ricorda", "", _ricorda),
+    Azione("impara_pronuncia", "", _impara_pronuncia),
     Azione("cambia_scena", "", _cambia_scena),
     Azione("notion_cerca", "", _notion_cerca),
     Azione("notion_leggi", "", _notion_leggi),

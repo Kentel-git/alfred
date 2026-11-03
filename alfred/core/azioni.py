@@ -24,7 +24,7 @@ from datetime import date, datetime, timedelta
 
 from alfred import brain, config
 from alfred.core import parole, veglia
-from alfred.tools import agenda, gioco, obs, telegram
+from alfred.tools import agenda, gioco, notion, obs, telegram
 
 log = logging.getLogger("alfred.azioni")
 SCADENZA_CONFERMA_S = 120
@@ -244,6 +244,73 @@ async def _domanda_elimina(parametri: dict) -> str:
     return f"Elimino «{e['titolo']}» di {parole.quando(e)}, signore? Mi basta un sì."
 
 
+# --- Notion -----------------------------------------------------------------------
+
+def _notion(funzione):
+    """Notion non collegato ed errori dell'API in un solo punto."""
+    async def esegui(parametri: dict) -> dict:
+        if not notion.pronto():
+            return {"ok": False, "messaggio": "Notion non è ancora collegato, signore: manca il token dell'integrazione."}
+        try:
+            return await funzione(parametri)
+        except notion.NotionNonPronto as errore:
+            log.warning("notion: %s", errore)
+            return {"ok": False, "messaggio": f"Notion ha obiettato, signore: {errore}."}
+    return esegui
+
+
+@_notion
+async def _notion_cerca(p: dict) -> dict:
+    trovati = await notion.cerca(p.get("testo", ""))
+    return {"ok": True, "risultati": trovati, "messaggio": f"Ho trovato {len(trovati)} risultati su Notion, signore."
+            if trovati else "Su Notion non trovo nulla, signore, almeno tra le pagine che mi ha condiviso."}
+
+
+@_notion
+async def _notion_leggi(p: dict) -> dict:
+    return {"ok": True, **await notion.leggi(p["id"]), "messaggio": "Letto, signore."}
+
+
+@_notion
+async def _notion_crea(p: dict) -> dict:
+    v = await notion.crea(p["genitore"], p["titolo"], p.get("testo") or "", p.get("proprieta"))
+    return {"ok": True, "pagina": v, "messaggio": f"Ho creato «{v['titolo']}» su Notion, signore."}
+
+
+@_notion
+async def _notion_aggiungi(p: dict) -> dict:
+    n = await notion.aggiungi(p["id"], p["testo"])
+    return {"ok": True, "messaggio": f"Annotato su Notion, signore ({n} righe)."}
+
+
+@_notion
+async def _notion_aggiorna(p: dict) -> dict:
+    v = await notion.aggiorna(p["id"], p["proprieta"])
+    return {"ok": True, "messaggio": f"Aggiornato «{v['titolo']}» su Notion, signore."}
+
+
+@_notion
+async def _notion_riscrivi(p: dict) -> dict:
+    await notion.riscrivi(p["id"], p["testo"])
+    return {"ok": True, "messaggio": "Riscritto su Notion, signore."}
+
+
+@_notion
+async def _notion_elimina(p: dict) -> dict:
+    await notion.elimina(p["id"])
+    return {"ok": True, "messaggio": f"Eliminato da Notion, signore: {p.get('_cosa', 'fatto')}. Resta nel cestino per 30 giorni."}
+
+
+async def _domanda_riscrivi(p: dict) -> str:
+    vecchio = await notion.blocco(p["id"])
+    return f"Su Notion sostituisco «{vecchio[:80]}» con «{p['testo'][:80]}», signore? Mi basta un sì."
+
+
+async def _domanda_elimina_notion(p: dict) -> str:
+    p["_cosa"] = await notion.descrivi(p["id"])
+    return f"Elimino da Notion {p['_cosa']}, signore? Finirà nel cestino. Mi basta un sì."
+
+
 async def _sveglia(accesa: bool) -> dict:
     from alfred.voce import sveglia
 
@@ -322,6 +389,13 @@ AZIONI = {a.nome: a for a in [
     Azione("aggiorna_chat", "", _aggiorna_chat),
     Azione("ricorda", "", _ricorda),
     Azione("cambia_scena", "", _cambia_scena),
+    Azione("notion_cerca", "", _notion_cerca),
+    Azione("notion_leggi", "", _notion_leggi),
+    Azione("notion_crea", "", _notion_crea),
+    Azione("notion_aggiungi", "", _notion_aggiungi),
+    Azione("notion_aggiorna", "", _notion_aggiorna),
+    Azione("notion_riscrivi", _domanda_riscrivi, _notion_riscrivi, sensibile=True),
+    Azione("notion_elimina", _domanda_elimina_notion, _notion_elimina, sensibile=True),
 ]}
 
 

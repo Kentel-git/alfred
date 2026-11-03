@@ -36,6 +36,7 @@ impeccabile.
                                         │  ├─ tools/   azioni          │
                                         │  │   ├─ agenda               │
                                         │  │   ├─ telegram             │
+                                        │  │   ├─ notion               │
                                         │  │   ├─ modalità gioco       │
                                         │  │   └─ obs (WebSocket 4455) │
                                         │  ├─ voice/  STT + TTS        │
@@ -77,6 +78,7 @@ impeccabile.
 | Strumento | Come | Note |
 |---|---|---|
 | Agenda | Da decidere in fase 2: CalDAV/Google Calendar API (libero, portabile) | |
+| Notion | API ufficiale con integrazione interna (token in secrets.env), vedi [NOTION.md](NOTION.md) | Vede solo le pagine condivise; riscrivere ed eliminare chiedono conferma |
 | Telegram | Bot API ufficiale (bot personale di Alfred), long polling | Conversazione completa da Telegram; risponde solo alla chat collegata al primo /start |
 | Modalità gioco | Lancia un comando configurabile | Qui: `steam://rungameid/…` di Battle.net, che passa già da `modalita-gioco` |
 | OBS | obs-websocket v5 (porta 4455) | Scene, avvio/stop live e registrazione, stato |

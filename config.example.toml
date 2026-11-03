@@ -1,6 +1,7 @@
 # Configurazione di Alfred.
 # installa.sh la copia in ~/.config/alfred/config.toml: modifica quella.
 # I segreti (token, password) vanno in ~/.config/alfred/secrets.env, non qui.
+# Notion: NOTION_TOKEN=ntn_... in secrets.env (vedi docs/NOTION.md).
 
 [generale]
 # Come Alfred si rivolge a te.

@@ -6,7 +6,7 @@
 
 Alfred è un maggiordomo digitale libero e open source per desktop Linux:
 una finestra a schermo intero che si richiama con una scorciatoia, con cui si
-parla a voce e che si occupa di agenda, messaggi, giochi e streaming.
+parla a voce e che si occupa di agenda, appunti su Notion, messaggi, giochi e streaming.
 
 **Stato:** fase 0 (finestra e HUD di base). Installazione: `./installa.sh`, poi `Mod+A` (niri). Vedi [docs/ROADMAP.md](docs/ROADMAP.md) e
 [docs/ARCHITETTURA.md](docs/ARCHITETTURA.md).
@@ -22,7 +22,7 @@ JetBrains Mono) sono sotto [SIL Open Font License](ui/fonts/OFL-Rajdhani.txt).
 
 Alfred is a free and open source digital butler for the Linux desktop: a
 fullscreen window summoned with a keyboard shortcut, which you talk to and
-which takes care of your calendar, messages, games and streaming.
+which takes care of your calendar, Notion notes, messages, games and streaming.
 
 The project's working language is Italian (code comments, docs, Alfred's
 voice); this section is a summary for international readers.

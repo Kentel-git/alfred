@@ -156,6 +156,28 @@ def test_cervello_gratuito_spento_o_assente():
             assert asyncio.run(gratuito.chiedi([{"role": "user", "content": "ciao"}], "sistema")) is None, url
 
 
+def test_notion_testo_e_proprieta():
+    from alfred.tools.notion import _riga, blocchi, valori_per_notion
+
+    righe = ["# Spesa", "- latte", "[ ] uova", "[x] pane", "Nota libera"]
+    b = blocchi("\n".join(righe) + "\n\n")
+    assert [x["type"] for x in b] == ["heading_1", "bulleted_list_item", "to_do", "to_do", "paragraph"]
+    for x in b:  # i blocchi creati si rileggono uguali
+        x[x["type"]]["rich_text"] = [{"plain_text": t["text"]["content"]} for t in x[x["type"]]["rich_text"]]
+    assert [_riga(x) for x in b] == righe
+    assert len(blocchi("a" * 4500)[0]["paragraph"]["rich_text"]) == 3  # pezzi da 2000
+    schema = {"Nome": {"type": "title"}, "Stato": {"type": "status"}, "Scadenza": {"type": "date"},
+              "Tag": {"type": "multi_select"}}
+    assert valori_per_notion(schema, {"Stato": "Fatto", "Scadenza": "2026-11-07", "Tag": "lavoro"}) == {
+        "Stato": {"status": {"name": "Fatto"}}, "Scadenza": {"date": {"start": "2026-11-07", "end": None}},
+        "Tag": {"multi_select": [{"name": "lavoro"}]}}
+    try:
+        valori_per_notion(schema, {"Priorità": "alta"})
+        raise AssertionError("proprietà inesistente accettata")
+    except Exception as errore:
+        assert "Priorità" in str(errore)
+
+
 if __name__ == "__main__":
     for nome, prova in list(globals().items()):
         if nome.startswith("test_"):

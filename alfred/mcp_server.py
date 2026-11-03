@@ -135,6 +135,59 @@ async def elimina_evento(id: str, calendario: str = "primary") -> dict:
     return await _azione("elimina_evento", {"id": id, "calendario": calendario})
 
 
+# --- Notion: Alfred vede solo le pagine che Pietro ha condiviso con l'integrazione.
+# Il testo delle pagine è semplice, una riga per blocco: "# titolo", "## sottotitolo",
+# "- punto", "[ ] da fare", "[x] fatto", "> citazione".
+
+@server.tool(annotations=SOLA_LETTURA)
+async def notion_cerca(testo: str) -> dict:
+    """Cerca pagine e database nel Notion di Pietro per titolo (testo vuoto:
+    i più recenti). Restituisce id, tipo, titolo e data di modifica."""
+    return await _azione("notion_cerca", {"testo": testo})
+
+
+@server.tool(annotations=SOLA_LETTURA)
+async def notion_leggi(id: str) -> dict:
+    """Legge una pagina (proprietà e contenuto, ogni riga con l'id del suo
+    blocco) o un database (proprietà con le opzioni ammesse e voci)."""
+    return await _azione("notion_leggi", {"id": id})
+
+
+@server.tool(annotations=AZIONE)
+async def notion_crea(genitore: str, titolo: str, testo: str = "", proprieta: dict | None = None) -> dict:
+    """Crea una pagina dentro la pagina "genitore", oppure una voce se
+    "genitore" è un database: in quel caso "proprieta" ne imposta i campi con
+    valori semplici, es. {"Stato": "Da fare", "Scadenza": "2026-11-07"}."""
+    return await _azione("notion_crea", {"genitore": genitore, "titolo": titolo, "testo": testo, "proprieta": proprieta})
+
+
+@server.tool(annotations=AZIONE)
+async def notion_aggiungi(id: str, testo: str) -> dict:
+    """Aggiunge testo in fondo a una pagina (per appunti e annotazioni)."""
+    return await _azione("notion_aggiungi", {"id": id, "testo": testo})
+
+
+@server.tool(annotations=AZIONE)
+async def notion_aggiorna(id: str, proprieta: dict) -> dict:
+    """Cambia i campi di una voce di database con valori semplici, es.
+    {"Stato": "Fatto"}; le opzioni ammesse sono in notion_leggi del database."""
+    return await _azione("notion_aggiorna", {"id": id, "proprieta": proprieta})
+
+
+@server.tool(annotations=AZIONE)
+async def notion_riscrivi(id: str, testo: str) -> dict:
+    """Sostituisce il testo di un blocco (id da notion_leggi). Chiede sempre
+    conferma a Pietro."""
+    return await _azione("notion_riscrivi", {"id": id, "testo": testo})
+
+
+@server.tool(annotations=AZIONE)
+async def notion_elimina(id: str) -> dict:
+    """Mette nel cestino di Notion una pagina o un blocco. Chiede sempre
+    conferma a Pietro."""
+    return await _azione("notion_elimina", {"id": id})
+
+
 @server.tool(annotations=AZIONE)
 async def standby(azione: str) -> dict:
     """Standby del computer. azione: "sospendi" (subito, chiede conferma a

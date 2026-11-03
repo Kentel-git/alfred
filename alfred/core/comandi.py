@@ -68,11 +68,71 @@ TELEGRAM = re.compile(
 )
 
 
+# --- Il computer ----------------------------------------------------------------------
+NUMERI = {"un": 1, "uno": 1, "una": 1, "due": 2, "tre": 3, "quattro": 4, "cinque": 5, "sei": 6, "sette": 7,
+          "otto": 8, "nove": 9, "dieci": 10, "undici": 11, "dodici": 12, "quindici": 15, "venti": 20,
+          "venticinque": 25, "trenta": 30, "quaranta": 40, "quarantacinque": 45, "cinquanta": 50, "sessanta": 60}
+NUMERO = r"(?:\d+|" + "|".join(NUMERI) + ")"
+UNITA = {"second": 1 / 60, "minut": 1, "or": 60}
+# normalizza unisce "mezz'ora", "quarto d'ora", "un'ora" (se no "ora" cadrebbe con le cortesie).
+FRAZIONE = r"(?P<frazione>un\s+quarto\s+dora|mezzora|unora)"
+TIMER = re.compile(
+    r"^(?:(?:(?:metti|imposta|fai\s+partire|avvia)\s+)?(?:un\s+)?timer\s+(?:di\s+|da\s+|per\s+)?"
+    r"|(?:avvisami|chiamami|svegliami)\s+tra\s+)"
+    rf"(?:{FRAZIONE}|(?P<quanto>{NUMERO})\s*(?P<unita>secondi?|minuti?|ore|ora)?)$"
+)
+ANNULLA_TIMER = re.compile(r"^(?:annulla|togli|cancella|ferma|spegni|stop)\s+(?:il\s+|i\s+|tutti\s+i\s+)?timer$")
+VOLUME = [
+    (re.compile(r"^(?:alza|aumenta)\s+(?:il\s+)?volume$|^(?:piu|più)\s+forte$|^volume\s+su$"), "alza"),
+    (re.compile(r"^(?:abbassa|diminuisci)\s+(?:il\s+)?volume$|^(?:piu|più)\s+piano$|^volume\s+giu$"), "abbassa"),
+    (re.compile(r"^(?:togli\s+l\s+audio|muto|silenzia(?:\s+(?:l\s+audio|il\s+computer))?|metti\s+(?:in\s+)?muto)$"), "muto"),
+    (re.compile(r"^(?:riattiva\s+l\s+audio|togli\s+il\s+muto|rimetti\s+l\s+audio)$"), "audio"),
+]
+VOLUME_A = re.compile(rf"^(?:(?:metti|imposta|porta)\s+(?:il\s+)?)?volume\s+(?:al?\s+|a\s+)?(?P<livello>{NUMERO})(?:\s+per\s*cento)?$")
+MUSICA = r"(?:\s+(?:la\s+)?(?:musica|canzone|video|riproduzione|brano|podcast))?"
+RIPRODUZIONE = [
+    (re.compile(rf"^(?:pausa|metti\s+in\s+pausa|ferma|stoppa){MUSICA}$|^metti\s+in\s+pausa{MUSICA}$"), "pausa"),
+    (re.compile(rf"^(?:play|riprendi|fai\s+ripartire|riparti|continua){MUSICA}$"), "play"),
+    (re.compile(r"^(?:prossima|successiva|avanti|salta)(?:\s+(?:canzone|traccia|brano|video))?$|^(?:canzone|traccia|brano)\s+successiv[ao]$"), "avanti"),
+    (re.compile(r"^(?:precedente|indietro|torna\s+indietro)(?:\s+(?:canzone|traccia|brano))?$|^(?:canzone|traccia|brano)\s+precedente$"), "indietro"),
+]
+APRI = re.compile(r"^(?:apri|avvia|lancia|aprimi|fammi\s+vedere)\s+(?P<cosa>.+)$")
+
+
+def _numero(t: str) -> int:
+    return int(t) if t.isdigit() else NUMERI[t]
+
+
+def _comando_pc(t: str) -> tuple[str, dict] | None:
+    if ANNULLA_TIMER.match(t):
+        return "annulla_timer", {}
+    if m := TIMER.match(t):
+        if m["frazione"]:
+            return "timer", {"minuti": {"mezzora": 30, "unora": 60}.get(m["frazione"], 15)}
+        fattore = next((v for k, v in UNITA.items() if (m["unita"] or "minut").startswith(k)), 1)
+        return "timer", {"minuti": _numero(m["quanto"]) * fattore}
+    for schema, azione in VOLUME:
+        if schema.match(t):
+            return "volume", {"azione": azione}
+    if m := VOLUME_A.match(t):
+        return "volume", {"azione": "imposta", "livello": _numero(m["livello"])}
+    for schema, azione in RIPRODUZIONE:
+        if schema.match(t):
+            return "riproduzione", {"azione": azione}
+    if (m := APRI.match(t)) and len(m["cosa"].split()) <= 4:
+        from alfred.tools import pc
+
+        if pc.trova(m["cosa"]):  # solo app e cartelle che esistono; il resto al cervello
+            return "apri", {"cosa": m["cosa"]}
+    return None
+
+
 def normalizza(testo: str) -> str:
     testo = unicodedata.normalize("NFKD", testo.lower())
     testo = "".join(c for c in testo if not unicodedata.combining(c))  # sì → si, modalità → modalita
     testo = re.sub(r"[^\w\s]", " ", testo)
     testo = re.sub(r"\s+", " ", testo).strip()
+    testo = re.sub(r"\b(un|mezz|d) ora\b", r"\1ora", testo)
     testo = CORTESIE_INIZIO.sub("", testo)
     return CORTESIE_FINE.sub("", testo).strip()
 
@@ -88,11 +148,15 @@ def riconosci(testo: str) -> tuple[str, dict] | None:
         return None
     if CONFERMA.match(t):
         return "conferma", {}
+    if ANNULLA_TIMER.match(t):  # prima di ANNULLA, che prenderebbe "annulla il timer"
+        return "annulla_timer", {}
     if ANNULLA.match(t):
         return "annulla", {}
     for schema, azione in COMANDI:
         if schema.match(t):
             return azione, {}
+    if comando := _comando_pc(t):  # prima della scena: "metti in pausa" non è una scena
+        return comando
     for schema in AGENDA:
         if m := schema.match(t):
             giorno = m.groupdict().get("giorno") or "oggi"

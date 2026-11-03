@@ -8,6 +8,7 @@ USO = """Uso: alfred <comando>
   finestra  apre la finestra di Alfred
   toggle    mostra o nasconde la finestra (per la scorciatoia)
   ascolta   apre il microfono per una frase (per la scorciatoia)
+  detta     dettatura: scrive ciò che dici dove si trova il cursore
   spegni    ferma Alfred (servizio e finestra) fino al prossimo accesso
   riavvia   riavvia Alfred
   mcp       server MCP con gli strumenti (lo avvia il cervello)
@@ -25,12 +26,12 @@ def main() -> None:
         from alfred.finestra import avvia
 
         avvia()
-    elif comando == "ascolta":
+    elif comando in ("ascolta", "detta"):
         import httpx
 
         from alfred import config
 
-        httpx.post(f"{config.url_core()}/api/ascolta", timeout=5)
+        httpx.post(f"{config.url_core()}/api/{comando}", timeout=5)
     elif comando in ("spegni", "riavvia"):
         from alfred.finestra import gestisci_servizio
 

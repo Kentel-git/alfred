@@ -27,6 +27,15 @@ def test_comandi_diretti():
         "No, lascia stare": "annulla",
         "basta così": "zittisci",
         "smetti di ascoltare": "sveglia_spenta",
+        "Metti un timer di 10 minuti": "timer",
+        "avvisami tra mezz'ora": "timer",
+        "annulla il timer": "annulla_timer",
+        "alza il volume": "volume",
+        "volume al 40%": "volume",
+        "metti in pausa la musica": "riproduzione",
+        "prossima canzone": "riproduzione",
+        "riprendi la registrazione": "riprendi_registrazione",
+        "apri un file che non esiste da nessuna parte": None,
         "metti in standby": "sospendi_computer",
         # Al cervello: troppo lunghe o sfumate per un comando diretto.
         "avvia la diretta tra dieci minuti": None,
@@ -37,6 +46,12 @@ def test_comandi_diretti():
         trovato = riconosci(frase)
         assert (trovato and trovato[0]) == atteso, (frase, trovato)
     assert riconosci("Mandami su Telegram: comprare il latte")[1] == {"testo": "comprare il latte"}
+    durate = {"timer di 30 secondi": 0.5, "timer 5": 5, "avvisami tra un'ora": 60,
+              "timer di un quarto d'ora": 15, "avvisami tra 2 ore": 120, "timer di mezz'ora, grazie": 30}
+    for frase, minuti in durate.items():
+        assert riconosci(frase) == ("timer", {"minuti": minuti}), frase
+    assert riconosci("avvia la diretta ora") == ("avvia_diretta", {})  # "ora" resta una cortesia
+    assert riconosci("volume 30") == ("volume", {"azione": "imposta", "livello": 30})
 
 
 def test_sveglia_distingue_il_nome():
@@ -46,6 +61,14 @@ def test_sveglia_distingue_il_nome():
     assert verifica("Mettilo al freddo, nel frigorifero.")[0] == "no"
     assert verifica("Alfredo mi senti?") == ("chiamata", "mi senti?")
     assert verifica("È arrivato Alfredo in ritardo.")[0] == "no"
+
+
+def test_durata_a_parole():
+    from alfred.core.parole import durata
+
+    assert [durata(s) for s in (30, 60, 90, 900, 3600, 5400, 3725)] == [
+        "30 secondi", "un minuto", "un minuto e 30 secondi", "un quarto d'ora", "un'ora",
+        "un'ora e 30 minuti", "un'ora, 2 minuti e 5 secondi"]
 
 
 def test_economo():

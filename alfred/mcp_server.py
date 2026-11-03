@@ -214,6 +214,43 @@ async def aggiorna_chat(link: str) -> dict:
     return await _azione("aggiorna_chat", {"link": link})
 
 
+# --- Il computer --------------------------------------------------------------------
+
+@server.tool(annotations=AZIONE)
+async def apri(cosa: str) -> dict:
+    """Apre un'app (per nome: "firefox", "kdenlive", "calcolatrice"), una
+    cartella ("documenti", "scaricati", "cartella progetti") o un link."""
+    return await _azione("apri", {"cosa": cosa})
+
+
+@server.tool(annotations=AZIONE)
+async def volume(azione: str, livello: int | None = None) -> dict:
+    """Volume del computer. azione: "alza" o "abbassa" (di livello punti, 10
+    se non indicato), "imposta" (livello 0-100), "muto", "audio" (toglie il muto)."""
+    return await _azione("volume", {"azione": azione, "livello": livello})
+
+
+@server.tool(annotations=AZIONE)
+async def riproduzione(azione: str) -> dict:
+    """Musica e video in riproduzione sul computer (Spotify, browser…).
+    azione: "pausa", "play", "avanti", "indietro"."""
+    return await _azione("riproduzione", {"azione": azione})
+
+
+@server.tool(annotations=AZIONE)
+async def timer(minuti: float, etichetta: str = "") -> dict:
+    """Avvia un timer: allo scadere Alfred avvisa Pietro (a voce, o su Telegram
+    se non è al computer). minuti può avere decimali (0.5 = 30 secondi);
+    etichetta: a cosa serve ("la pasta")."""
+    return await _azione("timer", {"minuti": minuti, "etichetta": etichetta})
+
+
+@server.tool(annotations=AZIONE)
+async def annulla_timer() -> dict:
+    """Annulla i timer in corso."""
+    return await _azione("annulla_timer")
+
+
 @server.tool(annotations=AZIONE)
 async def impara_pronuncia(parole: list[str], inglese: bool = True) -> dict:
     """Dopo il sì di Pietro, aggiunge parole o nomi (anche di più termini,

@@ -19,9 +19,10 @@ from alfred.brain import gratuito
 from alfred.brain.economo import RISPOSTE_AUSTERITA, Economo
 from alfred.config import CARTELLA_STATO
 from alfred.core import comandi, iniziativa, limiti, meteo, parole
+from alfred.core import azioni
 from alfred.core.azioni import Gestore, descrizione_per_riferire
 from alfred.finestra import avvisa_desktop
-from alfred.tools import agenda, telegram
+from alfred.tools import agenda, pc, telegram
 from alfred.voce import ascolto, parola, sveglia
 
 FILE_CONVERSAZIONE = CARTELLA_STATO / "conversazione.json"
@@ -88,6 +89,7 @@ class Conversazione:
         )
         self.occupato = False
         self.azioni = Gestore(self._invia_da_azioni)
+        azioni.quando_scade = lambda testo: self.di_sua_iniziativa(testo, iniziativa.schermo_bloccato())
         # Da dove arriva l'ultimo messaggio di Pietro ("hud", "telegram" o "voce"):
         # risposte ed esiti tornano lì.
         self._origine = "hud"
@@ -225,6 +227,40 @@ class Conversazione:
             discorso.fine()
             await discorso.compito
         await self.ascolta()
+
+    async def detta(self) -> None:
+        """Dettatura: ciò che Pietro dice viene scritto dove si trova il cursore.
+        Si chiude da sola a fine discorso; premendo di nuovo il tasto si chiude subito."""
+        if self._ascolto:
+            self._ascolto.interrompi()
+            return
+        self.zittisci()
+        self._ascolto = ascolto.Ascolto()
+        asyncio.create_task(self._detta(self._ascolto))
+
+    async def _detta(self, sessione: "ascolto.Ascolto") -> None:
+        async def avvisa(stato: str) -> None:
+            await self._invia({"tipo": "ascolto", "stato": stato})
+
+        self.sveglia.sospendi()
+        pc.notifica("Dettatura", "La ascolto, signore…")
+        testo = ""
+        try:
+            # Dettando si fanno pause più lunghe che parlando ad Alfred.
+            audio = await sessione.frase(avvisa, fine_frase_s=2.0, durata_massima_s=90)
+            if audio is not None:
+                await avvisa("trascrivo")
+                testo = await ascolto.trascrivi(audio)
+        except Exception:
+            log.exception("dettatura non riuscita")
+        finally:
+            self._ascolto = None
+            self.sveglia.riprendi()
+            await avvisa("fine")
+        if not testo:
+            pc.notifica("Dettatura", "Non ho sentito nulla, signore.")
+        elif not await asyncio.to_thread(pc.scrivi, testo + " "):
+            pc.notifica("Dettatura: manca wtype", testo, 10000)
 
     async def _ascolta_frase(self, sessione: "ascolto.Ascolto") -> None:
         async def avvisa(stato: str) -> None:

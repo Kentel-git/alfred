@@ -24,7 +24,7 @@ from datetime import date, datetime, timedelta
 
 from alfred import brain, config
 from alfred.core import parole, veglia
-from alfred.tools import agenda, gioco, notion, obs, telegram
+from alfred.tools import agenda, gioco, notion, obs, pc, telegram
 
 log = logging.getLogger("alfred.azioni")
 SCADENZA_CONFERMA_S = 120
@@ -323,6 +323,65 @@ async def _domanda_elimina_notion(p: dict) -> str:
     return f"Elimino da Notion {p['_cosa']}, signore? Finirà nel cestino. Mi basta un sì."
 
 
+# --- Il computer: app, cartelle, volume, musica, timer ------------------------------
+
+async def _apri(p: dict) -> dict:
+    cosa = (p.get("cosa") or "").strip()
+    trovato = pc.trova(cosa)
+    if not trovato:
+        return {"ok": False, "messaggio": f"Non trovo «{cosa}» tra le app e le cartelle, signore."}
+    tipo, obiettivo, nome = trovato
+    pc.apri(tipo, obiettivo)
+    return {"ok": True, "messaggio": _una(f"Apro {nome}, signore.", f"Ecco {nome}, signore.")}
+
+
+async def _volume(p: dict) -> dict:
+    livello, muto = pc.volume(p.get("azione") or "imposta", p.get("livello"))
+    return {"ok": True, "messaggio": "Audio silenziato, signore." if muto else f"Volume al {livello} per cento, signore."}
+
+
+async def _riproduzione(p: dict) -> dict:
+    azione = p.get("azione") or "pausa"
+    lettore = pc.riproduzione(azione)
+    if not lettore:
+        return {"ok": False, "messaggio": "Non c'è nulla in riproduzione, signore."}
+    detto = {"pausa": "In pausa", "play": "Riprendo", "avanti": "Avanti", "indietro": "Torno indietro"}[azione]
+    return {"ok": True, "messaggio": f"{detto}, signore."}
+
+
+# Chi avvisa quando un timer scade: lo imposta la conversazione all'avvio.
+# shortcut: i timer vivono in memoria e si perdono se Alfred si riavvia; salvarli se servirà.
+quando_scade: Callable[[str], Awaitable[None]] | None = None
+timer_attivi: dict[asyncio.Task, str] = {}
+
+
+async def _timer(p: dict) -> dict:
+    secondi = round(float(p.get("minuti") or 0) * 60)
+    if secondi <= 0:
+        return {"ok": False, "messaggio": "Per quanto tempo, signore?"}
+    etichetta = (p.get("etichetta") or "").strip()
+    durata = parole.durata(secondi)
+
+    async def scade():
+        await asyncio.sleep(secondi)
+        timer_attivi.pop(asyncio.current_task(), None)
+        if quando_scade:
+            await quando_scade(f"Signore, è scaduto il timer di {durata}" + (f": {etichetta}." if etichetta else "."))
+
+    timer_attivi[asyncio.create_task(scade())] = etichetta or durata
+    return {"ok": True, "messaggio": f"Timer di {durata} avviato, signore."}
+
+
+async def _annulla_timer(_p: dict) -> dict:
+    if not timer_attivi:
+        return {"ok": True, "messaggio": "Non c'erano timer, signore."}
+    n = len(timer_attivi)
+    for compito in list(timer_attivi):
+        compito.cancel()
+    timer_attivi.clear()
+    return {"ok": True, "messaggio": "Timer annullato, signore." if n == 1 else f"{n} timer annullati, signore."}
+
+
 async def _sveglia(accesa: bool) -> dict:
     from alfred.voce import sveglia
 
@@ -401,6 +460,11 @@ AZIONI = {a.nome: a for a in [
     Azione("aggiorna_chat", "", _aggiorna_chat),
     Azione("ricorda", "", _ricorda),
     Azione("impara_pronuncia", "", _impara_pronuncia),
+    Azione("apri", "", _apri),
+    Azione("volume", "", _volume),
+    Azione("riproduzione", "", _riproduzione),
+    Azione("timer", "", _timer),
+    Azione("annulla_timer", "", _annulla_timer),
     Azione("cambia_scena", "", _cambia_scena),
     Azione("notion_cerca", "", _notion_cerca),
     Azione("notion_leggi", "", _notion_leggi),

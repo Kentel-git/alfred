@@ -9,6 +9,8 @@ Nessun audio esce dal computer e non si consumano riserve.
 """
 
 import asyncio
+import ctypes
+import gc
 import logging
 import shutil
 import time
@@ -28,6 +30,10 @@ VOCABOLARIO_BASE = "Alfred, OBS, diretta, registrazione, scena, agenda, Telegram
 
 _modello = None
 _blocco_modello = asyncio.Lock()
+_ultimo_uso = time.monotonic()
+# Dopo questa inattività il modello si scarica: libera ~1,6 GB (medium) e alla
+# prossima frase si ricarica in ~1,5 s.
+RIPOSO_S = 600
 
 
 def _impostazioni() -> dict:
@@ -60,6 +66,22 @@ async def prepara() -> None:
     await _carica_modello()
 
 
+async def riposa() -> None:
+    """Scarica il modello quando non serve da un po'."""
+    global _modello
+    while True:
+        await asyncio.sleep(60)
+        if _modello is None or time.monotonic() - _ultimo_uso < RIPOSO_S or _blocco_modello.locked():
+            continue
+        _modello = None  # una trascrizione in corso tiene ancora il suo riferimento
+        gc.collect()
+        try:  # senza, al sistema torna solo metà della memoria
+            ctypes.CDLL("libc.so.6").malloc_trim(0)
+        except (OSError, AttributeError):  # non glibc
+            pass
+        log.info("trascrizione a riposo: modello scaricato")
+
+
 async def trascrivi(audio: np.ndarray) -> str:
     modello = await _carica_modello()
     imp = _impostazioni()
@@ -72,8 +94,10 @@ async def trascrivi(audio: np.ndarray) -> str:
         )
         return " ".join(s.text.strip() for s in segmenti).strip()
 
+    global _ultimo_uso
     inizio = time.monotonic()
     testo = await asyncio.to_thread(lavora)
+    _ultimo_uso = time.monotonic()
     log.info("trascritto in %.1f s: %s", time.monotonic() - inizio, testo)
     return testo
 
@@ -104,10 +128,11 @@ def blocco(dati: bytes) -> np.ndarray:
 
 
 async def fino_al_silenzio(processo, gia_sentito: np.ndarray | None = None,
-                           interrompi: asyncio.Event | None = None) -> np.ndarray | None:
+                           interrompi: asyncio.Event | None = None, **limiti) -> np.ndarray | None:
     """Legge il microfono finché non si smette di parlare. None se non si è parlato.
-    gia_sentito: l'audio precedente (la sveglia ci passa il nome appena detto)."""
-    imp = _impostazioni()
+    gia_sentito: l'audio precedente (la sveglia ci passa il nome appena detto).
+    limiti: fine_frase_s, durata_massima_s… al posto di quelli configurati."""
+    imp = _impostazioni() | limiti
     blocchi = [] if gia_sentito is None else [gia_sentito]
     ultimo_controllo, inizio = 0.0, time.monotonic()
     while not (interrompi and interrompi.is_set()):
@@ -143,12 +168,12 @@ class Ascolto:
     def interrompi(self) -> None:
         self._interrompi.set()
 
-    async def frase(self, avvisa) -> np.ndarray | None:
+    async def frase(self, avvisa, **limiti) -> np.ndarray | None:
         """Registra finché non si smette di parlare. None se non si è parlato."""
         processo = await microfono("Alfred (ascolto)")
         await avvisa("in_ascolto")
         try:
-            return await fino_al_silenzio(processo, interrompi=self._interrompi)
+            return await fino_al_silenzio(processo, interrompi=self._interrompi, **limiti)
         finally:
             processo.terminate()
             await processo.wait()

@@ -39,6 +39,18 @@ def tra(minuti: int) -> str:
     return "tra un momento" if minuti <= 1 else f"tra {nomi.get(minuti, f'{minuti} minuti')}"
 
 
+def durata(secondi: int) -> str:
+    """90 → "1 minuto e 30 secondi", 900 → "un quarto d'ora", 5400 → "1 ora e 30 minuti"."""
+    nomi = {900: "un quarto d'ora", 1800: "mezz'ora", 2700: "tre quarti d'ora", 3600: "un'ora"}
+    if secondi in nomi:
+        return nomi[secondi]
+    ore, resto = divmod(secondi, 3600)
+    minuti, sec = divmod(resto, 60)
+    parti = [singolare if n == 1 else f"{n} {plurale}" for n, singolare, plurale in
+             ((ore, "un'ora", "ore"), (minuti, "un minuto", "minuti"), (sec, "un secondo", "secondi")) if n]
+    return " e ".join(parti[-2:]) if len(parti) < 3 else f"{parti[0]}, {parti[1]} e {parti[2]}"
+
+
 def quando(evento: dict, con_giorno: bool = True) -> str:
     if evento["tutto_il_giorno"]:
         d = date.fromisoformat(evento["inizio"][:10])

@@ -168,6 +168,7 @@ async def ciclo_di_vita(_app: FastAPI):
         asyncio.create_task(_ciclo_agenda()),
         asyncio.create_task(veglia.istanza().sorveglia(diffusore.invia)),
         asyncio.create_task(ascolto.prepara()),
+        asyncio.create_task(ascolto.riposa()),
         asyncio.create_task(parola.prepara()),
         asyncio.create_task(conversazione.cervello.prepara()),
         asyncio.create_task(conversazione.sveglia.ascolta_sempre()),
@@ -290,6 +291,13 @@ async def azione(nome: str, parametri: dict | None = None):
 async def ascolta():
     """Scorciatoia da tastiera: apre il microfono per una frase (o lo chiude)."""
     await conversazione.ascolta()
+    return {"ok": True}
+
+
+@app.post("/api/detta")
+async def detta():
+    """Scorciatoia da tastiera: dettatura nella finestra attiva."""
+    await conversazione.detta()
     return {"ok": True}
 
 

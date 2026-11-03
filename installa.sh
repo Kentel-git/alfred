@@ -7,6 +7,7 @@ CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
 BIN="$HOME/.local/bin"
 TASTO="${ALFRED_TASTO:-Mod+A}"
 TASTO_VOCE="${ALFRED_TASTO_VOCE:-Mod+Shift+A}"
+TASTO_DETTATURA="${ALFRED_TASTO_DETTATURA:-Mod+Shift+D}"
 
 dire() { printf '\033[33m»\033[0m %s\n' "$*"; }
 errore() { printf '\033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
@@ -35,6 +36,9 @@ dire "Installo le dipendenze…"
 # --- Voce --------------------------------------------------------------------
 for programma in pw-record pw-play ffmpeg; do
     command -v "$programma" >/dev/null || dire "Attenzione: manca $programma (serve per ascolto e voce)."
+done
+for programma in wtype playerctl; do
+    command -v "$programma" >/dev/null || dire "Attenzione: manca $programma (serve per dettatura e controllo della musica)."
 done
 VOCE="${XDG_DATA_HOME:-$HOME/.local/share}/alfred/voce"
 mkdir -p "$VOCE"
@@ -125,6 +129,7 @@ if [ -f "$NIRI" ]; then
 binds {
     $TASTO hotkey-overlay-title="Alfred" { spawn "$BIN/alfred" "toggle"; }
     $TASTO_VOCE hotkey-overlay-title="Parla ad Alfred" { spawn "$BIN/alfred" "ascolta"; }
+    $TASTO_DETTATURA hotkey-overlay-title="Dettatura (Alfred)" { spawn "$BIN/alfred" "detta"; }
 }
 
 window-rule {
@@ -140,7 +145,7 @@ EOF
     if command -v niri >/dev/null && ! niri validate >/dev/null 2>&1; then
         errore "niri rifiuta la configurazione: controlla con 'niri validate'."
     fi
-    dire "Scorciatoie niri: $TASTO (finestra), $TASTO_VOCE (parla ad Alfred)"
+    dire "Scorciatoie niri: $TASTO (finestra), $TASTO_VOCE (parla ad Alfred), $TASTO_DETTATURA (dettatura)"
 else
     dire "niri non trovato: associa a una scorciatoia il comando '$BIN/alfred toggle'."
 fi

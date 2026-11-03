@@ -47,6 +47,9 @@ Ogni fase produce qualcosa di usabile da sola.
 - [x] memoria: "ricordati che…" in memoria.md; diario quotidiano (un riassunto di Haiku) e conversazione nuova ogni mattina
 
 ## Più avanti
+- [x] Whisper a riposo: dopo 10 minuti senza trascrizioni il modello si scarica (−1,6 GB), si ricarica in ~1,5 s
+- [x] dettatura: Mod+Shift+D, si parla e il testo compare dove c'è il cursore (wtype)
+- [x] controllo del PC a costo zero: apri app/cartelle/link, volume, pausa/play/avanti (playerctl), timer
 - [x] Notion: cerca, legge, crea pagine e voci di database, aggiunge appunti, aggiorna campi; riscrivere ed eliminare con conferma ([NOTION.md](NOTION.md))
 - [x] tema "ologramma da laboratorio": nucleo ad anelli che segue gli stati di Alfred (riposo, ascolto, pensa, parla, lato cinico) con transizioni morbide; ciano per i dati, ambra per le parole di Alfred
 - [ ] suoni originali (avvio, conferme)

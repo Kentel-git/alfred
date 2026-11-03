@@ -24,7 +24,7 @@ BLOCCO = 512  # campioni (32 ms)
 CONTROLLO_OGNI_S = 0.25
 
 # Vocabolario che aiuta Whisper con nomi propri e termini di casa.
-VOCABOLARIO_BASE = "Alfred, OBS, diretta, registrazione, scena, agenda, Telegram, Battle.net, CurseForge, standby."
+VOCABOLARIO_BASE = "Alfred, OBS, diretta, registrazione, scena, agenda, Telegram, Notion, Battle.net, CurseForge, standby."
 
 _modello = None
 _blocco_modello = asyncio.Lock()

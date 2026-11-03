@@ -243,11 +243,14 @@ class Conversazione:
             await self._invia({"tipo": "ascolto", "stato": stato})
 
         self.sveglia.sospendi()
+        log.info("dettatura: in ascolto")
         pc.notifica("Dettatura", "La ascolto, signore…")
         testo = ""
         try:
+            await parola.segnale("inizio")  # prima di aprire il microfono, che non lo registri
             # Dettando si fanno pause più lunghe che parlando ad Alfred.
             audio = await sessione.frase(avvisa, fine_frase_s=2.0, durata_massima_s=90)
+            await parola.segnale("fine")
             if audio is not None:
                 await avvisa("trascrivo")
                 testo = await ascolto.trascrivi(audio)
@@ -257,6 +260,7 @@ class Conversazione:
             self._ascolto = None
             self.sveglia.riprendi()
             await avvisa("fine")
+        log.info("dettatura: %s", f"scrivo {len(testo)} caratteri" if testo else "niente da scrivere")
         if not testo:
             pc.notifica("Dettatura", "Non ho sentito nulla, signore.")
         elif not await asyncio.to_thread(pc.scrivi, testo + " "):

@@ -262,6 +262,25 @@ class Discorso:
         await self._riproduttore.wait()
 
 
+def _note(frequenze: list[float], sr: int = 24000, durata_s: float = 0.09) -> np.ndarray:
+    """Note brevi e morbide, una dopo l'altra (suoni originali, generati qui)."""
+    t = np.arange(int(sr * durata_s)) / sr
+    inviluppo = np.sin(np.pi * t / durata_s) ** 2  # attacco e coda dolci, niente clic
+    return np.concatenate([0.25 * np.sin(2 * np.pi * f * t) * inviluppo for f in frequenze]).astype(np.float32)
+
+
+SEGNALI = {"inizio": [660, 880], "fine": [880, 660]}  # sale: ascolto; scende: fatto
+
+
+async def segnale(nome: str) -> None:
+    """Suona un segnale e aspetta che finisca (così il microfono non lo sente)."""
+    processo = await asyncio.create_subprocess_exec(
+        "pw-play", "--raw", "--rate", "24000", "--channels", "1", "--format", "f32", "-",
+        stdin=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+    )
+    await processo.communicate(_note(SEGNALI[nome]).tobytes())
+
+
 async def in_vocale(testo: str, destinazione: Path) -> Path:
     """Un vocale Ogg/Opus (per Telegram) con tutto il testo."""
     pezzi, sr = [], 24000

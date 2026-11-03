@@ -246,9 +246,40 @@ async def timer(minuti: float, etichetta: str = "") -> dict:
 
 
 @server.tool(annotations=AZIONE)
-async def annulla_timer() -> dict:
-    """Annulla i timer in corso."""
-    return await _azione("annulla_timer")
+async def sorveglia(tipo: str, valore: str | None = None, soglia: float | None = None, etichetta: str = "") -> dict:
+    """Tiene d'occhio qualcosa e avvisa Pietro quando succede (a costo zero).
+    tipo:
+    - "processo": quando il programma "valore" termina (es. "melt" per i render
+      di Kdenlive, "ffmpeg"); se non sai il nome usa processi_attivi
+    - "cpu": quando il computer torna a riposo per un minuto (render generico)
+    - "file": quando il file "valore" (percorso) esiste e smette di crescere
+    - "download": quando finiscono i download in corso in Scaricati
+    - "batteria": in carica, quando arriva a "soglia" (100 se manca); a
+      batteria, quando scende a "soglia"
+    - "obs": "valore" tra diretta_inizia, diretta_finisce,
+      registrazione_inizia, registrazione_finisce
+    etichetta: come chiamarla nell'avviso ("l'esportazione del reel")."""
+    return await _azione("sorveglia", {"tipo": tipo, "valore": valore, "soglia": soglia, "etichetta": etichetta})
+
+
+@server.tool(annotations=SOLA_LETTURA)
+async def processi_attivi() -> dict:
+    """I programmi che stanno usando più processore adesso (nome e percento):
+    per scegliere quale sorvegliare."""
+    return await _chiedi_al_core("/api/processi")
+
+
+@server.tool(annotations=SOLA_LETTURA)
+async def attivita_in_corso() -> dict:
+    """Timer e sorveglianze in corso, con il loro id."""
+    return await _chiedi_al_core("/api/attivita")
+
+
+@server.tool(annotations=AZIONE)
+async def annulla_attivita(id: str | None = None, tipo: str | None = None) -> dict:
+    """Annulla un timer o una sorveglianza (id da attivita_in_corso), tutte
+    quelle di un tipo ("timer"), o tutte se non indichi nulla."""
+    return await _azione("annulla_attivita", {"id": id, "tipo": tipo})
 
 
 @server.tool(annotations=AZIONE)

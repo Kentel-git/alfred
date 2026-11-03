@@ -31,7 +31,7 @@ from watchfiles import awatch
 
 from alfred import __version__, config
 from alfred.brain import FILE_DIARIO, FILE_MEMORIA, FILE_PERSONALITA, FILE_SCHEDA
-from alfred.core import limiti, meteo, sistema, telegram_ponte, veglia
+from alfred.core import attivita, limiti, meteo, sistema, telegram_ponte, veglia
 from alfred.core.iniziativa import Iniziativa
 from alfred.core.azioni import agenda_per_hud
 from alfred.core.conversazione import Conversazione
@@ -160,6 +160,7 @@ async def _osserva_file() -> None:
 async def ciclo_di_vita(_app: FastAPI):
     global conversazione
     conversazione = Conversazione(diffusore.invia)
+    attivita.istanza().diffondi = diffusore.invia
     compiti = [
         asyncio.create_task(_ciclo_sistema()),
         asyncio.create_task(_ciclo_meteo()),
@@ -175,6 +176,7 @@ async def ciclo_di_vita(_app: FastAPI):
         asyncio.create_task(telegram_ponte.ciclo(conversazione)),
         asyncio.create_task(Iniziativa(conversazione).ciclo()),
         asyncio.create_task(_osserva_file()),
+        asyncio.create_task(attivita.istanza().ciclo()),
     ]
     yield
     for compito in compiti:
@@ -220,6 +222,7 @@ async def canale(ws: WebSocket):
     await diffusore.invia(limiti.stato(), solo=ws)
     await diffusore.invia(veglia.istanza().stato(), solo=ws)
     await diffusore.invia(await agenda_per_hud(), solo=ws)
+    await diffusore.invia(attivita.istanza().per_hud(), solo=ws)
     if attesa := conversazione.azioni.stato_attesa():
         await diffusore.invia(attesa, solo=ws)
     await diffusore.invia(await _meteo(), solo=ws)
@@ -292,6 +295,16 @@ async def ascolta():
     """Scorciatoia da tastiera: apre il microfono per una frase (o lo chiude)."""
     await conversazione.ascolta()
     return {"ok": True}
+
+
+@app.get("/api/attivita")
+def elenco_attivita():
+    return attivita.istanza().per_hud()
+
+
+@app.get("/api/processi")
+async def processi():
+    return {"processi": await asyncio.to_thread(attivita.processi_pesanti)}
 
 
 @app.post("/api/detta")

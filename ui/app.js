@@ -232,6 +232,39 @@ function azione(nome, parametri = {}) {
   invia({ tipo: "azione", nome, parametri });
 }
 
+// --- Attività: timer e sorveglianze -------------------------------------------------
+let elencoAttivita = [];
+
+function restante(scadenza) {
+  const s = Math.max(0, Math.round(scadenza - Date.now() / 1000)), h = Math.floor(s / 3600);
+  const mmss = `${String(Math.floor(s / 60) % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  return h ? `${h}:${mmss}` : mmss;
+}
+
+function disegnaAttivita() {
+  $("riquadro-attivita").hidden = !elencoAttivita.length;
+  $("attivita-conta").textContent = elencoAttivita.length > 1 ? elencoAttivita.length : "";
+  $("attivita").replaceChildren(...elencoAttivita.map((a) => {
+    const li = document.createElement("li"), testo = document.createElement("span"), stato = document.createElement("span");
+    const via = document.createElement("button");
+    testo.textContent = a.testo;
+    stato.className = a.scadenza ? "resta" : "sorveglia";
+    stato.textContent = a.scadenza ? restante(a.scadenza) : "IN CORSO";
+    via.textContent = "✕";
+    via.title = "Annulla";
+    via.addEventListener("click", () => azione("annulla_attivita", { id: a.id }));
+    li.append(testo, stato, via);
+    return li;
+  }));
+}
+
+function mostraAttivita(m) {
+  elencoAttivita = m.voci;
+  disegnaAttivita();
+}
+// Il conto alla rovescia scorre senza chiedere nulla al servizio.
+setInterval(() => { if (elencoAttivita.some((a) => a.scadenza)) disegnaAttivita(); }, 1000);
+
 function mostraRegia(r) {
   $("riquadro-regia").hidden = false;
   $("regia-chiusa").hidden = r.aperto;
@@ -478,6 +511,7 @@ function collega() {
       case "limiti": mostraLimiti(m); break;
       case "veglia": mostraVeglia(m); break;
       case "agenda": mostraAgenda(m); break;
+      case "attivita": mostraAttivita(m); break;
       case "regia": mostraRegia(m.dati); break;
       case "cronologia": mostraCronologia(m); break;
       case "messaggio":

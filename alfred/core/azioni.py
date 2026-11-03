@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from alfred import brain, config
-from alfred.core import parole, veglia
+from alfred.core import attivita, parole, veglia
 from alfred.tools import agenda, gioco, notion, obs, pc, telegram
 
 log = logging.getLogger("alfred.azioni")
@@ -349,37 +349,27 @@ async def _riproduzione(p: dict) -> dict:
     return {"ok": True, "messaggio": f"{detto}, signore."}
 
 
-# Chi avvisa quando un timer scade: lo imposta la conversazione all'avvio.
-# shortcut: i timer vivono in memoria e si perdono se Alfred si riavvia; salvarli se servirà.
-quando_scade: Callable[[str], Awaitable[None]] | None = None
-timer_attivi: dict[asyncio.Task, str] = {}
-
-
 async def _timer(p: dict) -> dict:
-    secondi = round(float(p.get("minuti") or 0) * 60)
-    if secondi <= 0:
-        return {"ok": False, "messaggio": "Per quanto tempo, signore?"}
-    etichetta = (p.get("etichetta") or "").strip()
-    durata = parole.durata(secondi)
-
-    async def scade():
-        await asyncio.sleep(secondi)
-        timer_attivi.pop(asyncio.current_task(), None)
-        if quando_scade:
-            await quando_scade(f"Signore, è scaduto il timer di {durata}" + (f": {etichetta}." if etichetta else "."))
-
-    timer_attivi[asyncio.create_task(scade())] = etichetta or durata
-    return {"ok": True, "messaggio": f"Timer di {durata} avviato, signore."}
+    return await _sorveglia({"tipo": "timer", "soglia": p.get("minuti"), "etichetta": p.get("etichetta")})
 
 
-async def _annulla_timer(_p: dict) -> dict:
-    if not timer_attivi:
-        return {"ok": True, "messaggio": "Non c'erano timer, signore."}
-    n = len(timer_attivi)
-    for compito in list(timer_attivi):
-        compito.cancel()
-    timer_attivi.clear()
-    return {"ok": True, "messaggio": "Timer annullato, signore." if n == 1 else f"{n} timer annullati, signore."}
+async def _sorveglia(p: dict) -> dict:
+    try:
+        a = await attivita.istanza().aggiungi(p.get("tipo") or "", p.get("valore"), p.get("soglia"),
+                                              p.get("etichetta") or "")
+    except attivita.AttivitaNonValida as errore:
+        return {"ok": False, "messaggio": f"Non posso, signore: {errore}."}
+    if a["tipo"] == "timer":
+        return {"ok": True, "id": a["id"], "messaggio": f"Timer di {parole.durata(a['secondi'])} avviato, signore."}
+    return {"ok": True, "id": a["id"], "messaggio": f"Terrò d'occhio: {attivita.descrizione(a)}, signore."}
+
+
+async def _annulla_attivita(p: dict) -> dict:
+    n = await attivita.istanza().annulla(p.get("id"), p.get("tipo"))
+    cosa = "timer" if p.get("tipo") == "timer" else "attività"
+    if not n:
+        return {"ok": True, "messaggio": f"Non c'erano {cosa} da annullare, signore."}
+    return {"ok": True, "messaggio": "Annullato, signore." if n == 1 else f"{n} {cosa} annullati, signore."}
 
 
 async def _sveglia(accesa: bool) -> dict:
@@ -464,7 +454,8 @@ AZIONI = {a.nome: a for a in [
     Azione("volume", "", _volume),
     Azione("riproduzione", "", _riproduzione),
     Azione("timer", "", _timer),
-    Azione("annulla_timer", "", _annulla_timer),
+    Azione("sorveglia", "", _sorveglia),
+    Azione("annulla_attivita", "", _annulla_attivita),
     Azione("cambia_scena", "", _cambia_scena),
     Azione("notion_cerca", "", _notion_cerca),
     Azione("notion_leggi", "", _notion_leggi),

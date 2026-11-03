@@ -18,8 +18,7 @@ from alfred.brain.claude import CervelloClaude, chiedi_una_volta
 from alfred.brain import gratuito
 from alfred.brain.economo import RISPOSTE_AUSTERITA, Economo
 from alfred.config import CARTELLA_STATO
-from alfred.core import comandi, iniziativa, limiti, meteo, parole
-from alfred.core import azioni
+from alfred.core import attivita, comandi, iniziativa, limiti, meteo, parole
 from alfred.core.azioni import Gestore, descrizione_per_riferire
 from alfred.finestra import avvisa_desktop
 from alfred.tools import agenda, pc, telegram
@@ -89,7 +88,7 @@ class Conversazione:
         )
         self.occupato = False
         self.azioni = Gestore(self._invia_da_azioni)
-        azioni.quando_scade = lambda testo: self.di_sua_iniziativa(testo, iniziativa.schermo_bloccato())
+        attivita.istanza().avvisa = lambda testo: self.di_sua_iniziativa(testo, iniziativa.schermo_bloccato())
         # Da dove arriva l'ultimo messaggio di Pietro ("hud", "telegram" o "voce"):
         # risposte ed esiti tornano lì.
         self._origine = "hud"

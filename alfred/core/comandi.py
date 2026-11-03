@@ -105,7 +105,7 @@ def _numero(t: str) -> int:
 
 def _comando_pc(t: str) -> tuple[str, dict] | None:
     if ANNULLA_TIMER.match(t):
-        return "annulla_timer", {}
+        return "annulla_attivita", {"tipo": "timer"}
     if m := TIMER.match(t):
         if m["frazione"]:
             return "timer", {"minuti": {"mezzora": 30, "unora": 60}.get(m["frazione"], 15)}
@@ -149,7 +149,7 @@ def riconosci(testo: str) -> tuple[str, dict] | None:
     if CONFERMA.match(t):
         return "conferma", {}
     if ANNULLA_TIMER.match(t):  # prima di ANNULLA, che prenderebbe "annulla il timer"
-        return "annulla_timer", {}
+        return "annulla_attivita", {"tipo": "timer"}
     if ANNULLA.match(t):
         return "annulla", {}
     for schema, azione in COMANDI:

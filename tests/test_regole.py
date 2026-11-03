@@ -29,7 +29,7 @@ def test_comandi_diretti():
         "smetti di ascoltare": "sveglia_spenta",
         "Metti un timer di 10 minuti": "timer",
         "avvisami tra mezz'ora": "timer",
-        "annulla il timer": "annulla_timer",
+        "annulla il timer": "annulla_attivita",
         "alza il volume": "volume",
         "volume al 40%": "volume",
         "metti in pausa la musica": "riproduzione",
@@ -228,6 +228,51 @@ def test_impara_pronuncia():
         inglesi, italiane = parola.parole_note()
         assert "Skyborne" in inglesi and italiane == ["Andarun"]
         assert parola.impara(["andarun", "SKYBORNE"], True) == []  # già decise, in qualunque maiuscola
+
+
+def test_attivita():
+    import asyncio
+    import tempfile
+    from pathlib import Path
+
+    from alfred import config
+    from alfred.core import attivita
+
+    async def prova(cartella: Path):
+        a = attivita.Attivita()
+        t = await a.aggiungi("timer", soglia=10, etichetta="la pasta")
+        f = cartella / "reel.mp4"
+        await a.aggiungi("file", valore=str(f))
+        try:
+            await a.aggiungi("processo", valore="programma-che-non-esiste")
+            raise AssertionError("processo inesistente accettato")
+        except attivita.AttivitaNonValida:
+            pass
+        assert len(attivita.Attivita().voci) == 2  # salvate: sopravvivono a un riavvio
+        assert await a._avvenuta(t, None) is None
+        t["scadenza"] = 0  # scaduto mentre Alfred era spento
+        assert "mentre ero spento" in await a._avvenuta(t, None) and "la pasta" in await a._avvenuta(t, None)
+        sorveglia_file = a.voci[1]
+        f.write_bytes(b"x" * 10)
+        risposte = [await a._avvenuta(sorveglia_file, None) for _ in range(4)]
+        assert risposte[:3] == [None, None, None] and "reel.mp4" in risposte[3]  # pronto quando smette di crescere
+        assert await a.annulla(tipo="timer") == 1 and await a.annulla() == 1 and not a.voci
+
+    with tempfile.TemporaryDirectory() as cartella, mock.patch.object(config, "CARTELLA_STATO", Path(cartella)):
+        asyncio.run(prova(Path(cartella)))
+
+
+def test_script_dell_hud():
+    """Un errore di sintassi in app.js spegne tutto l'HUD senza dire nulla."""
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    if not shutil.which("node"):
+        return  # senza Node.js il controllo si salta
+    app = Path(__file__).parent.parent / "ui" / "app.js"
+    esito = subprocess.run(["node", "--check", str(app)], capture_output=True, text=True)
+    assert esito.returncode == 0, esito.stderr
 
 
 if __name__ == "__main__":

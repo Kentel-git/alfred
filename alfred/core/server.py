@@ -340,6 +340,7 @@ def avvia() -> None:
     # httpx registra gli indirizzi completi, e quelli di Telegram contengono il token.
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpx2").setLevel(logging.WARNING)  # usato da Hugging Face
+    logging.getLogger("pocket_tts").setLevel(logging.WARNING)  # statistiche a ogni frase
     # Avvisi innocui delle librerie vocali (cambi di lingua, pkg_resources).
     logging.getLogger("phonemizer").setLevel(logging.ERROR)
     warnings.filterwarnings("ignore", message="pkg_resources is deprecated")

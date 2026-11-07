@@ -229,12 +229,16 @@ class Conversazione:
         if esito == "chiamata":
             await self.ricevi(comando, origine="voce")
             return
-        # Solo il nome: Alfred si volta, e ascolta.
-        if discorso := self._parla():
+        # Solo il nome: Alfred si volta, e ascolta. Il microfono si apre già mentre
+        # dice "Sì, signore?": se Pietro attacca subito, l'inizio non va perso.
+        discorso = self._parla()
+        if discorso:
             discorso.aggiungi("Sì, signore?")
             discorso.fine()
-            await discorso.compito
-        await self.ascolta()
+        if self._ascolto:
+            self._ascolto.interrompi()
+        self._ascolto = ascolto.Ascolto(dopo=discorso.compito if discorso else None)
+        asyncio.create_task(self._ascolta_frase(self._ascolto))
 
     async def detta(self) -> None:
         """Dettatura: ciò che Pietro dice viene scritto dove si trova il cursore.

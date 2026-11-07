@@ -26,7 +26,7 @@ BLOCCO = 512  # campioni (32 ms)
 CONTROLLO_OGNI_S = 0.25
 
 # Vocabolario che aiuta Whisper con nomi propri e termini di casa.
-VOCABOLARIO_BASE = "Alfred, OBS, diretta, registrazione, scena, agenda, Telegram, Notion, Battle.net, CurseForge, standby."
+VOCABOLARIO_BASE = "Alfred, OBS, diretta, registrazione, scena, agenda, riserve, Inbox, briefing, Telegram, Notion, Battle.net, CurseForge, standby."
 
 _modello = None
 _blocco_modello = asyncio.Lock()
@@ -162,8 +162,13 @@ async def fino_al_silenzio(processo, gia_sentito: np.ndarray | None = None,
 class Ascolto:
     """Una frase: dal momento in cui si apre il microfono al silenzio finale."""
 
-    def __init__(self):
+    CODA_S = 0.2  # quanto della voce di Alfred può ancora uscire dagli altoparlanti
+
+    def __init__(self, dopo: asyncio.Future | None = None):
+        """dopo: il microfono si apre subito, ma l'audio conta solo da quando questo
+        finisce (es. il "Sì, signore?"), così non si perde l'inizio della frase."""
         self._interrompi = asyncio.Event()
+        self._dopo = dopo
 
     def interrompi(self) -> None:
         self._interrompi.set()
@@ -171,9 +176,16 @@ class Ascolto:
     async def frase(self, avvisa, **limiti) -> np.ndarray | None:
         """Registra finché non si smette di parlare. None se non si è parlato."""
         processo = await microfono("Alfred (ascolto)")
-        await avvisa("in_ascolto")
         try:
+            if self._dopo:
+                while not self._dopo.done() and not self._interrompi.is_set():
+                    await processo.stdout.readexactly(BLOCCO * 2)  # è ancora la voce di Alfred
+                for _ in range(int(self.CODA_S * FREQUENZA / BLOCCO)):
+                    await processo.stdout.readexactly(BLOCCO * 2)
+            await avvisa("in_ascolto")
             return await fino_al_silenzio(processo, interrompi=self._interrompi, **limiti)
+        except asyncio.IncompleteReadError:
+            return None
         finally:
             processo.terminate()
             await processo.wait()

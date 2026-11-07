@@ -5,3 +5,6 @@ secrets.env
 *.onnx
 *.bin
 models/
+
+# Grafo di graphify: generato in locale, contiene percorsi della macchina
+graphify-out/

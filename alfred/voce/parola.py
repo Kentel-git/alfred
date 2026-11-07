@@ -227,9 +227,29 @@ async def _modello_pocket():
     return _pocket
 
 
+# --- Conferme istantanee ------------------------------------------------------------
+# Mentre il cervello pensa: già sintetizzate all'avvio, così partono senza attesa.
+CONFERME_ORDINI = ["Subito, signore.", "Me ne occupo, signore.", "Certamente, signore."]
+CONFERME_DOMANDE = ["Un istante, signore.", "Vediamo, signore.", "Mi lasci controllare, signore."]
+ORDINE = re.compile(r"^\W*(?:alfred\W+)?(?:per favore\s+|puoi\s+|potresti\s+)?(?:aggiung|segn|mand|mett|apr|cre|spost|"
+                    r"cancell|elimin|scriv|annot|avvi|ferm|chiud|prepar|organizz|ricord|imposta|cambia|cerca|trova)",
+                    re.IGNORECASE)
+_pronte: dict[str, tuple[np.ndarray, int]] = {}
+
+
+def conferma_per(richiesta: str) -> str:
+    """Un ordine riceve "Subito, signore."; una domanda o un discorso "Un istante, signore."."""
+    import random
+
+    ordine = ORDINE.match(richiesta) and not richiesta.rstrip().endswith("?")
+    return random.choice(CONFERME_ORDINI if ordine else CONFERME_DOMANDE)
+
+
 async def prepara() -> None:
     if disponibile() and _impostazioni()["attiva"]:
         await (_modello_pocket() if _impostazioni()["motore"] == "pocket" else _modello())
+        for frase in CONFERME_ORDINI + CONFERME_DOMANDE:
+            _pronte[frase] = await sintetizza(frase)
 
 
 # --- Testo adatto a essere detto ---------------------------------------------
@@ -346,6 +366,8 @@ def _taglia(audio: np.ndarray, soglia: float = 0.01) -> np.ndarray:
 
 
 async def sintetizza(frase: str) -> tuple[np.ndarray, int]:
+    if frase in _pronte:
+        return _pronte[frase]
     imp = _impostazioni()
     if imp["motore"] == "pocket":
         modello, voce = await _modello_pocket()
@@ -398,6 +420,10 @@ class Discorso:
             self._frasi.put_nowait(self._resto)
         self._resto = ""
         self._frasi.put_nowait(None)
+
+    @property
+    def zitto(self) -> bool:
+        return self._zitto
 
     def zittisci(self) -> None:
         self._zitto = True

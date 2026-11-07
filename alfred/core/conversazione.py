@@ -50,6 +50,7 @@ DIARIO = ("Sei Alfred, il maggiordomo. Ti do la conversazione di una giornata co
 # Austerità: il cervello gratuito non ha gli strumenti di Alfred e vede solo
 # gli ultimi messaggi.
 MESSAGGI_AL_GRATUITO = 12
+ATTESA_CONFERMA_S = 1.0  # se il cervello tace più di così, Alfred conferma di aver capito
 SENZA_STRUMENTI = (
     "\n\n## In questo momento\nLe riserve di Claude sono quasi esaurite: stai parlando con un "
     "cervello di scorta, senza strumenti. Non puoi eseguire azioni, leggere l'agenda né mandare "
@@ -393,8 +394,21 @@ class Conversazione:
         else:
             await _a_telegram("Quella richiesta è scaduta o è già stata decisa, signore.")
 
+    async def _conferma_se_tarda(self, testo: str, discorso: "parola.Discorso", iniziata: asyncio.Event) -> None:
+        """Se il cervello non comincia a rispondere entro un attimo, Alfred dice "Subito,
+        signore." o simili: niente silenzio imbarazzato dopo una richiesta a voce."""
+        try:
+            await asyncio.wait_for(iniziata.wait(), ATTESA_CONFERMA_S)
+        except TimeoutError:
+            if not discorso.zitto:
+                discorso.aggiungi(parola.conferma_per(testo))
+
     async def _rispondi(self, testo: str) -> None:
         origine = self._origine
+        discorso = self._parla() if origine == "voce" else None
+        iniziata = asyncio.Event()  # il primo pezzo di risposta è arrivato
+        if discorso:
+            asyncio.create_task(self._conferma_se_tarda(testo, discorso, iniziata))
         modello = self.economo.scegli(testo, limiti.stato())
         if modello is None:
             # Austerità: risponde il cervello gratuito (senza strumenti), altrimenti
@@ -404,6 +418,7 @@ class Conversazione:
             if storia and storia[-1]["role"] == "user":
                 storia[-1]["content"] = f"{_contesto(origine)}\n{storia[-1]['content']}"
             libera = await gratuito.chiedi(storia, brain.personalita(self.cervello.appellativo) + SENZA_STRUMENTI)
+            iniziata.set()
             messaggio = {"chi": "alfred", "testo": parola.visibile(libera or "") or RISPOSTE_AUSTERITA[0], "quando": time.time(),
                          "modello": "gratuito" if libera else None}
             self.messaggi.append(messaggio)
@@ -411,13 +426,12 @@ class Conversazione:
             await self._invia({"tipo": "risposta_fine", "messaggio": messaggio})
             if origine == "telegram":
                 await _a_telegram(messaggio["testo"], vocale=self._vocale_telegram)
-            elif origine == "voce" and (discorso := self._parla()):
+            elif discorso:
                 discorso.aggiungi(messaggio["testo"])
                 discorso.fine()
             return
 
         scrivendo = asyncio.create_task(self._sta_scrivendo()) if origine == "telegram" else None
-        discorso = self._parla() if origine == "voce" else None
         self.occupato = True
         await self._invia({"tipo": "risposta_inizio", "modello": modello})
         risposta, errore = "", None
@@ -431,6 +445,7 @@ class Conversazione:
             async for evento in self.cervello.chiedi(f"{_contesto(origine)}\n{riferimenti}{testo}", modello):
                 match evento["tipo"]:
                     case "parziale":
+                        iniziata.set()
                         await self._invia({"tipo": "risposta_parziale", "testo": parola.visibile(evento["testo"])})
                         if discorso:
                             discorso.aggiungi(evento["testo"] or " ")
@@ -450,6 +465,7 @@ class Conversazione:
             errore = str(e)
 
         self.occupato = False
+        iniziata.set()
         messaggio = {
             "chi": "alfred",
             "testo": parola.visibile(risposta).strip() or "Perdoni, signore: ho perso il filo del discorso. Può ripetere?",

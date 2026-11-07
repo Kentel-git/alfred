@@ -105,6 +105,15 @@ def test_domani_di_notte():
         assert azioni.giorno_richiesto("domani") == oggi + timedelta(days=1)
 
 
+def test_conferma_istantanea():
+    from alfred.voce.parola import CONFERME_DOMANDE, CONFERME_ORDINI, conferma_per
+
+    for ordine in ("Aggiungi un impegno per sabato", "Puoi mandarmi su Telegram la lista", "Alfred, apri la nota"):
+        assert conferma_per(ordine) in CONFERME_ORDINI, ordine
+    for domanda in ("che impegni ho domani?", "Secondo te devo spostare la diretta", "Puoi aprirla?"):
+        assert conferma_per(domanda) in CONFERME_DOMANDE, domanda
+
+
 def test_testo_per_la_voce():
     assert per_la_voce("Domani all'8:30 «Dentista», alle 21:00 la diretta. Fuori 8°C, umidità 89% 🎙") == \
         "Domani all'otto e trenta Dentista, alle ventuno la diretta. Fuori otto gradi, umidità ottantanove per cento"

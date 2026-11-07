@@ -289,7 +289,7 @@ class Conversazione:
                 await avvisa("niente")
                 return
             await avvisa("trascrivo")
-            testo = await ascolto.trascrivi(audio)
+            testo = await ascolto.trascrivi(audio, "rapida")  # comando breve, senza il nome davanti
         except Exception as errore:
             log.exception("ascolto non riuscito")
             await self._invia({"tipo": "ascolto", "stato": "errore", "errore": str(errore)})

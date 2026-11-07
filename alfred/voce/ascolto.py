@@ -39,7 +39,8 @@ RIPOSO_S = 600
 
 def _impostazioni() -> dict:
     return {
-        "modello": "small",  # trascrive ciò che Pietro dice
+        "modello": "small",  # precisa: "Alfred, comando" d'un fiato, dettatura, vocali
+        "modello_rapido": "small",  # rapida: il comando dopo "Sì, signore?" (~1 s)
         "modello_sveglia": "base",  # verifica solo il nome "Alfred": 0,4 s invece di 3,7 col medium
         "fine_frase_s": 0.9,  # silenzio che chiude la frase
         "attesa_inizio_s": 6,  # se non si parla entro questo tempo, si rinuncia
@@ -48,8 +49,11 @@ def _impostazioni() -> dict:
     } | config.carica().get("ascolto", {})
 
 
-async def _carica_modello(veloce: bool = False):
-    nome = _impostazioni()["modello_sveglia" if veloce else "modello"]
+CHIAVI = {"sveglia": "modello_sveglia", "rapida": "modello_rapido", "precisa": "modello"}
+
+
+async def _carica_modello(tipo: str = "precisa"):
+    nome = _impostazioni()[CHIAVI[tipo]]
     async with _blocco_modello:
         if nome not in _modelli:
             from faster_whisper import WhisperModel
@@ -64,8 +68,8 @@ async def _carica_modello(veloce: bool = False):
 
 async def prepara() -> None:
     """Carica i modelli in anticipo, così la prima frase non aspetta."""
-    await _carica_modello(veloce=True)
-    await _carica_modello()
+    for tipo in CHIAVI:
+        await _carica_modello(tipo)
 
 
 async def riposa() -> None:
@@ -73,11 +77,12 @@ async def riposa() -> None:
     while True:
         await asyncio.sleep(60)
         imp = _impostazioni()
-        nome = imp["modello"]  # quello della sveglia è piccolo e resta: il nome si riconosce subito
-        if nome not in _modelli or nome == imp["modello_sveglia"] or time.monotonic() - _ultimo_uso < RIPOSO_S \
-                or _blocco_modello.locked():
+        # Quello della sveglia è piccolo e resta: il nome si riconosce subito.
+        via = [n for n in _modelli if n != imp["modello_sveglia"]]
+        if not via or time.monotonic() - _ultimo_uso < RIPOSO_S or _blocco_modello.locked():
             continue
-        del _modelli[nome]  # una trascrizione in corso tiene ancora il suo riferimento
+        for nome in via:
+            del _modelli[nome]  # una trascrizione in corso tiene ancora il suo riferimento
         gc.collect()
         try:  # senza, al sistema torna solo metà della memoria
             ctypes.CDLL("libc.so.6").malloc_trim(0)
@@ -86,9 +91,10 @@ async def riposa() -> None:
         log.info("trascrizione a riposo: modello scaricato")
 
 
-async def trascrivi(audio: np.ndarray, veloce: bool = False) -> str:
-    """veloce: col modello piccolo della sveglia (per riconoscere il nome, non per capire comandi)."""
-    modello = await _carica_modello(veloce)
+async def trascrivi(audio: np.ndarray, tipo: str = "precisa") -> str:
+    """tipo: "sveglia" (solo per riconoscere il nome), "rapida" (un comando breve,
+    senza il nome davanti) o "precisa" (frasi col nome, dettatura, vocali)."""
+    modello = await _carica_modello(tipo)
     imp = _impostazioni()
     prompt = f"{VOCABOLARIO_BASE} {imp['vocabolario']}".strip()
 
@@ -102,9 +108,9 @@ async def trascrivi(audio: np.ndarray, veloce: bool = False) -> str:
     global _ultimo_uso
     inizio = time.monotonic()
     testo = await asyncio.to_thread(lavora)
-    if not veloce:
+    if tipo != "sveglia":
         _ultimo_uso = time.monotonic()
-    log.info("trascritto%s in %.1f s: %s", " (sveglia)" if veloce else "", time.monotonic() - inizio, testo)
+    log.info("trascritto (%s) in %.1f s: %s", tipo, time.monotonic() - inizio, testo)
     return testo
 
 

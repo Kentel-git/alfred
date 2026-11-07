@@ -149,7 +149,7 @@ class Sveglia:
         audio = await ascolto.fino_al_silenzio(processo, gia_sentito)
         if audio is None:
             return
-        testo = await ascolto.trascrivi(audio, veloce=True)  # basta per sentire il nome
+        testo = await ascolto.trascrivi(audio, "sveglia")  # basta per sentire il nome
         esito, comando = verifica(testo)
         if esito == "no":
             log.info("falso allarme scartato: «%s»", testo)

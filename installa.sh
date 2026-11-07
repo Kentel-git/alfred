@@ -115,7 +115,7 @@ Restart=on-failure
 RestartSec=3
 # Voce e trascrizione restano in RAM anche quando la memoria scarseggia: finite
 # nello swap, Alfred impiegava secondi per capire e rispondere.
-MemoryLow=3G
+MemoryLow=3584M
 
 [Install]
 WantedBy=default.target

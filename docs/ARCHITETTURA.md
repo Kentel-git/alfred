@@ -73,6 +73,32 @@ impeccabile.
   chiave sherpa-onnx sempre attivo e permissivo, poi verifica della frase con
   Whisper. Tutto in locale, zero riserve.
 
+## Canale HUD ↔ core
+
+L'HUD parla con alfred-core su un solo WebSocket, `/ws`; le rotte `/api/...`
+servono ad altri client, non all'HUD. Il core spedisce messaggi con un campo
+`tipo` tramite `Diffusore.invia` (`alfred/core/server.py`), `ui/app.js` li
+smista per tipo. `Conversazione`, `Gestore` e `Attivita` ricevono
+`diffusore.invia` in `ciclo_di_vita()` e scrivono all'HUD da soli.
+
+| Riquadro | `tipo` | Origine |
+|---|---|---|
+| Sistema | `sistema` | `sistema.leggi()`, a ciclo in `_ciclo_sistema` |
+| Meteo | `meteo` | `_meteo()` → `meteo.leggi()`, a ciclo in `_ciclo_meteo` |
+| Regia OBS | `regia` | `obs.stato()`, a ciclo in `_ciclo_regia` |
+| Agenda | `agenda` | `agenda_per_hud()` (`core/azioni.py`), a ciclo in `_ciclo_agenda` |
+| Riserve e regime | `limiti` | `limiti.stato()`, con il regime dell'`Economo` |
+| Veglia | `veglia` | `core/veglia.py`, ai cambi di alimentazione |
+| Attività | `attivita` | `Attivita.per_hud()` (`core/attivita.py`) |
+| Conferma Sì/No | `conferma`, `conferma_chiusa` | `Gestore` (`core/azioni.py`) |
+| Dialogo | `messaggio`, `cronologia`, `risposta_*` | `Conversazione` |
+| Nucleo e microfono | `ascolto`, `parola` | `Conversazione` |
+
+In senso inverso l'HUD manda `chat`, `azione` (pulsanti dei riquadri, stessa
+strada dei comandi diretti), `conferma_azione`, `ascolta`,
+`nuova_conversazione` e `aggiornami` (finestra appena richiamata: dati freschi
+subito).
+
 ## Strumenti previsti
 
 | Strumento | Come | Note |

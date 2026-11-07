@@ -69,6 +69,9 @@ def _lettere(fonemi: str) -> str:
             continue
         if s in VOCALI:
             v = VOCALI[s]
+            # "i" breve atona dopo k/g: in inglese suona quasi "e" (marketing, ticket, target).
+            if s == "ɪ" and not accento and pezzi and pezzi[-1][1] in ("k", "g"):
+                v = "e"
             if accento:
                 v, accento = ACCENTATE[v[0]] + v[1:], False
             pezzi.append(("v", v))

@@ -47,6 +47,7 @@ Ogni fase produce qualcosa di usabile da sola.
 - [x] memoria: "ricordati che…" in memoria.md; diario quotidiano (un riassunto di Haiku) e conversazione nuova ogni mattina
 
 ## Più avanti
+- [x] voce: Pocket TTS (Kyutai, MIT) con la voce italiana "giovanni", scelta da Pietro dopo il confronto con Kokoro (più naturale, domande intonate da sé); numeri in lettere, parole straniere con grafie italiane imparabili a voce; Kokoro resta come motore leggero
 - [x] Whisper a riposo: dopo 10 minuti senza trascrizioni il modello si scarica (−1,6 GB), si ricarica in ~1,5 s
 - [x] dettatura: Mod+Shift+D, si parla e il testo compare dove c'è il cursore (wtype)
 - [x] controllo del PC a costo zero: apri app/cartelle/link, volume, pausa/play/avanti (playerctl), timer

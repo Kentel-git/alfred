@@ -33,29 +33,65 @@ INGLESE_BASE = ["Notion", "YouTube", "Discord", "Twitch", "streaming", "streamer
                 "Battle.net", "CurseForge", "Steam", "gaming", "email", "link", "desk", "addon", "raid",
                 "World of Warcraft", "Warcraft", "standby", "podcast", "reel", "post", "feedback"]
 
+# Con Pocket TTS (che legge testo, non fonemi) le parole straniere si riscrivono
+# come si pronunciano; altre in config.toml, [voce] grafie = {"parola" = "grafia"}.
+GRAFIE_BASE = {
+    "OBS": "obiesse", "Notion": "nòscion", "YouTube": "iutùb", "Discord": "dìscord", "Twitch": "tuìcc",
+    "streaming": "strìming", "streamer": "strìmer", "live": "làiv", "just chatting": "giàst ciàtting",
+    "Battle.net": "bàttol net", "CurseForge": "kèrs fòrg", "Steam": "stìm", "gaming": "ghèiming",
+    "email": "imèil", "desk": "dèsk", "addon": "àddon", "raid": "rèid", "World of Warcraft": "uòrld of uòrcraft",
+    "Warcraft": "uòrcraft", "standby": "stendbài", "reel": "rìl", "feedback": "fìdbec", "Claude": "clòd",
+}
+
 _kokoro = None
+_pocket = None  # (modello, stato della voce)
 _blocco = asyncio.Lock()
 
 
 FILE_PRONUNCE = "pronuncia.json"  # parole imparate parlando con Pietro
 
 
+def grafie() -> dict[str, str]:
+    """Parola straniera → come scriverla perché Pocket TTS la pronunci bene."""
+    return GRAFIE_BASE | _impostazioni()["grafie"] | config.leggi_stato(FILE_PRONUNCE).get("grafie", {})
+
+
 def parole_note() -> tuple[list[str], list[str]]:
-    """(parole lette all'inglese, parole che Pietro ha voluto all'italiana)."""
+    """(parole straniere che la voce sa pronunciare, parole che Pietro ha voluto all'italiana)."""
     imparate = config.leggi_stato(FILE_PRONUNCE)
-    return INGLESE_BASE + _impostazioni()["inglese"] + imparate.get("inglese", []), imparate.get("italiano", [])
+    italiane = imparate.get("italiano", [])
+    if _impostazioni()["motore"] == "pocket":
+        return [f"{p} ({g})" for p, g in grafie().items()], italiane
+    return INGLESE_BASE + _impostazioni()["inglese"] + imparate.get("inglese", []), italiane
 
 
-def impara(parole: list[str], inglese: bool) -> list[str]:
-    """Aggiunge parole all'elenco inglese (o a quelle da lasciare all'italiana,
-    così Alfred non lo chiede di nuovo). Restituisce quelle davvero nuove."""
-    inglesi, italiane = parole_note()
-    note = {p.lower() for p in inglesi + italiane}
+def impara(parole: list[str], inglese: bool, grafia: str | None = None) -> list[str]:
+    """Aggiunge parole all'elenco inglese (con grafia: alle grafie di Pocket TTS),
+    o a quelle da lasciare all'italiana, così Alfred non lo chiede di nuovo.
+    Restituisce quelle davvero nuove (con una grafia, la parola anche se c'era: si corregge)."""
+    stato = config.leggi_stato(FILE_PRONUNCE)
+    if inglese and grafia:
+        parola = parole[0].strip() if parole else ""
+        if not parola:
+            return []
+        config.salva_stato(FILE_PRONUNCE, grafie=stato.get("grafie", {}) | {parola: grafia.strip()})
+        return [parola]
+    note = {p.lower() for p in INGLESE_BASE + _impostazioni()["inglese"] + stato.get("inglese", [])
+            + stato.get("italiano", []) + list(grafie())}
     nuove = list(dict.fromkeys(p.strip() for p in parole if p.strip() and p.strip().lower() not in note))
     if nuove:
         chiave = "inglese" if inglese else "italiano"
-        config.salva_stato(FILE_PRONUNCE, **{chiave: config.leggi_stato(FILE_PRONUNCE).get(chiave, []) + nuove})
+        config.salva_stato(FILE_PRONUNCE, **{chiave: stato.get(chiave, []) + nuove})
     return nuove
+
+
+def con_grafie(frase: str, mappa: dict[str, str]) -> str:
+    """Sostituisce le parole straniere con la loro grafia italiana (parole intere)."""
+    if not mappa:
+        return frase
+    schema = r"(?<!\w)(" + "|".join(re.escape(p) for p in sorted(mappa, key=len, reverse=True)) + r")(?!\w)"
+    minuscole = {p.lower(): g for p, g in mappa.items()}
+    return re.sub(schema, lambda m: minuscole[m[1].lower()], frase, flags=re.IGNORECASE)
 
 
 def _impostazioni() -> dict:
@@ -66,10 +102,21 @@ def _impostazioni() -> dict:
         "domande": True,  # intonazione interrogativa corretta
         "salita_domande": 0.35,
         "inglese": [],
+        "motore": "pocket",  # pocket (Pocket TTS, più naturale) o kokoro (più leggero, senza PyTorch)
+        "voce_pocket": "giovanni",
+        "grafie": {},
     } | config.carica().get("voce", {})
 
 
+def _pocket_installato() -> bool:
+    import importlib.util
+
+    return importlib.util.find_spec("pocket_tts") is not None
+
+
 def disponibile() -> bool:
+    if _impostazioni()["motore"] == "pocket":
+        return _pocket_installato()
     return MODELLO.exists() and VOCI.exists()
 
 
@@ -85,12 +132,67 @@ async def _modello():
     return _kokoro
 
 
+async def _modello_pocket():
+    global _pocket
+    async with _blocco:
+        if _pocket is None:
+            def carica():
+                from pocket_tts import TTSModel
+
+                modello = TTSModel.load_model(language="italian")
+                return modello, modello.get_state_for_audio_prompt(_impostazioni()["voce_pocket"])
+
+            inizio = time.monotonic()
+            _pocket = await asyncio.to_thread(carica)
+            log.info("voce (Pocket TTS) pronta in %.1f s", time.monotonic() - inizio)
+    return _pocket
+
+
 async def prepara() -> None:
     if disponibile() and _impostazioni()["attiva"]:
-        await _modello()
+        await (_modello_pocket() if _impostazioni()["motore"] == "pocket" else _modello())
 
 
 # --- Testo adatto a essere detto ---------------------------------------------
+
+UNITA = ["zero", "uno", "due", "tre", "quattro", "cinque", "sei", "sette", "otto", "nove", "dieci", "undici",
+         "dodici", "tredici", "quattordici", "quindici", "sedici", "diciassette", "diciotto", "diciannove"]
+DECINE = ["", "", "venti", "trenta", "quaranta", "cinquanta", "sessanta", "settanta", "ottanta", "novanta"]
+MESI_RE = "gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre"
+
+
+def in_lettere(n: int) -> str:
+    """Un intero in lettere, all'italiana: 21 → ventuno, 1988 → millenovecentottantotto."""
+    if n < 0:
+        return "meno " + in_lettere(-n)
+    if n < 20:
+        return UNITA[n]
+    if n < 100:
+        decina, unita = divmod(n, 10)
+        base = DECINE[decina]
+        return base[:-1] + UNITA[unita] if unita in (1, 8) else base + (UNITA[unita] if unita else "")
+    if n < 1000:
+        centinaia, resto = divmod(n, 100)
+        cento = "cento" if centinaia == 1 else UNITA[centinaia] + "cento"
+        if resto == 8 or 80 <= resto < 90:  # centotto, centottanta
+            cento = cento[:-1]
+        return cento + (in_lettere(resto) if resto else "")
+    if n < 1_000_000:
+        migliaia, resto = divmod(n, 1000)
+        mille = "mille" if migliaia == 1 else in_lettere(migliaia) + "mila"
+        return mille + (in_lettere(resto) if resto else "")
+    milioni, resto = divmod(n, 1_000_000)
+    testa = "un milione" if milioni == 1 else in_lettere(milioni) + " milioni"
+    return testa + (" " + in_lettere(resto) if resto else "")
+
+
+def numeri_in_lettere(testo: str) -> str:
+    """Cifre → parole: alcune voci (Pocket TTS) si inceppano sulle cifre."""
+    testo = re.sub(rf"\b1(?=\s+(?:{MESI_RE})\b)", "primo", testo, flags=re.IGNORECASE)
+    testo = re.sub(r"\b(\d+),(\d+)\b", lambda m: f"{in_lettere(int(m[1]))} virgola {in_lettere(int(m[2]))}", testo)
+    testo = re.sub(r"\b(\d{1,3}(?:\.\d{3})+)\b", lambda m: m[1].replace(".", ""), testo)  # 1.500 → 1500
+    return re.sub(r"\b\d{1,9}\b", lambda m: in_lettere(int(m[0])), testo)
+
 
 def per_la_voce(testo: str) -> str:
     testo = re.sub(r"[«»\"*_#`]", "", testo)
@@ -98,6 +200,7 @@ def per_la_voce(testo: str) -> str:
     testo = re.sub(r"\b(\d{1,2}):(\d{2})\b", r"\1 e \2", testo)
     testo = testo.replace("°C", " gradi").replace("°", " gradi").replace("%", " per cento")
     testo = re.sub(r"[\U0001F000-\U0001FAFF☀-➿]", "", testo)  # emoji
+    testo = numeri_in_lettere(testo)
     return re.sub(r"\s+", " ", testo).strip()
 
 
@@ -164,8 +267,14 @@ def _taglia(audio: np.ndarray, soglia: float = 0.01) -> np.ndarray:
 
 
 async def sintetizza(frase: str) -> tuple[np.ndarray, int]:
-    kokoro = await _modello()
     imp = _impostazioni()
+    if imp["motore"] == "pocket":
+        modello, voce = await _modello_pocket()
+        testo = con_grafie(frase, grafie())
+        # Pocket intona da sé le domande: niente ritocco con pyworld.
+        audio = await asyncio.to_thread(lambda: modello.generate_audio(voce, testo).numpy())
+        return _taglia(audio.astype(np.float32)), modello.sample_rate
+    kokoro = await _modello()
 
     def lavora():
         voce = sum(p * kokoro.get_voice_style(v) for v, p in imp["voce"].items())

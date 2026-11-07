@@ -31,7 +31,8 @@ if [ ! -x "$DIR/.venv/bin/python" ]; then
     python3 -m venv --system-site-packages "$DIR/.venv"
 fi
 dire "Installo le dipendenze…"
-"$DIR/.venv/bin/pip" install -q --disable-pip-version-check -r "$DIR/requirements.txt"
+"$DIR/.venv/bin/pip" install -q --disable-pip-version-check -r "$DIR/requirements.txt" \
+    --extra-index-url https://download.pytorch.org/whl/cpu  # PyTorch per CPU: niente CUDA da 3 GB
 
 # --- Voce --------------------------------------------------------------------
 for programma in pw-record pw-play ffmpeg; do

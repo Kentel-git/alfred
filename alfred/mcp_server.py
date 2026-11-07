@@ -350,11 +350,13 @@ async def annulla_attivita(id: str | None = None, tipo: str | None = None) -> di
 
 
 @server.tool(annotations=AZIONE)
-async def impara_pronuncia(parole: list[str], inglese: bool = True) -> dict:
-    """Dopo il sì di Pietro, aggiunge parole o nomi (anche di più termini,
-    es. "Lore is Magic") a quelli che la tua voce pronuncia all'inglese.
-    Con inglese=false li segna da lasciare all'italiana."""
-    return await _azione("impara_pronuncia", {"parole": parole, "inglese": inglese})
+async def impara_pronuncia(parole: list[str], inglese: bool = True, grafia: str = "") -> dict:
+    """Dopo il sì di Pietro, insegna alla tua voce una parola o un nome
+    straniero (anche di più termini, es. "Lore is Magic"). grafia: come
+    scriverlo in italiano perché suoni giusto (es. "lòr is mègic"), una parola
+    per volta; serve con la voce attuale e corregge anche una grafia già nota.
+    Con inglese=false la parola resta all'italiana e non lo chiedi più."""
+    return await _azione("impara_pronuncia", {"parole": parole, "inglese": inglese, "grafia": grafia})
 
 
 @server.tool(annotations=AZIONE)

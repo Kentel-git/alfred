@@ -88,10 +88,16 @@ anticipo_minuti = 15
 # calendario_dirette = "Le mie dirette"
 anticipo_dirette = 30
 
-# La voce di Alfred. Le parole inglesi più comuni (Notion, YouTube, streaming…)
-# sono già lette all'inglese; qui se ne aggiungono altre, anche di più parole.
+# La voce di Alfred. Motore "pocket" (Pocket TTS di Kyutai, predefinito: più naturale,
+# ~800 MB di RAM, vuole PyTorch) o "kokoro" (più leggero, senza PyTorch).
+# Con Pocket le parole straniere si riscrivono come si pronunciano: le più comuni
+# (OBS, YouTube, streaming…) sono già pronte, altre si aggiungono qui o le impara
+# Alfred chiedendole a voce. Con Kokoro si elencano invece in "inglese".
 # [voce]
-# inglese = ["Lore is Magic", "Skyborne"]
+# motore = "pocket"
+# voce_pocket = "giovanni"
+# grafie = { "Lore is Magic" = "lòr is mègic", "Skyborne" = "scàibòrn" }
+# inglese = ["Lore is Magic", "Skyborne"]   # solo con motore = "kokoro"
 
 # Il second brain: un vault Obsidian (metodo PARA) che Alfred legge e in cui scrive.
 # Alfred carica sempre wiki/Alfred/contesto.md, cerca il resto quando serve, annota

@@ -107,7 +107,14 @@ def test_domani_di_notte():
 
 def test_testo_per_la_voce():
     assert per_la_voce("Domani all'8:30 «Dentista», alle 21:00 la diretta. Fuori 8°C, umidità 89% 🎙") == \
-        "Domani all'8 e 30 Dentista, alle 21 la diretta. Fuori 8 gradi, umidità 89 per cento"
+        "Domani all'otto e trenta Dentista, alle ventuno la diretta. Fuori otto gradi, umidità ottantanove per cento"
+    # Le cifre in lettere: Pocket TTS sulle cifre si inceppa.
+    from alfred.voce.parola import in_lettere
+    assert [in_lettere(n) for n in (1, 21, 28, 108, 180, 1988, 2026, 21000)] == [
+        "uno", "ventuno", "ventotto", "centotto", "centottanta", "millenovecentottantotto", "duemilaventisei",
+        "ventunomila"]
+    assert per_la_voce("Il 1 novembre, 3,5 GB e 1.500 iscritti.") == \
+        "Il primo novembre, tre virgola cinque GB e millecinquecento iscritti."
 
 
 def test_solo_l_hud_di_alfred():
@@ -225,13 +232,21 @@ def test_impara_pronuncia():
     from alfred import config
     from alfred.voce import parola
 
+    kokoro = {"voce": {"motore": "kokoro"}}
     with tempfile.TemporaryDirectory() as cartella, mock.patch.object(config, "CARTELLA_STATO", Path(cartella)):
-        assert parola.impara(["Skyborne", "notion", " ", "Skyborne"], True) == ["Skyborne"]  # Notion c'è già
-        assert parola.impara(["post"], False) == []  # già nell'elenco base
-        assert parola.impara(["Andarun"], False) == ["Andarun"]
-        inglesi, italiane = parola.parole_note()
-        assert "Skyborne" in inglesi and italiane == ["Andarun"]
-        assert parola.impara(["andarun", "SKYBORNE"], True) == []  # già decise, in qualunque maiuscola
+        with mock.patch.object(config, "carica", return_value=kokoro):
+            assert parola.impara(["Skyborne", "notion", " ", "Skyborne"], True) == ["Skyborne"]  # Notion c'è già
+            assert parola.impara(["post"], False) == []  # già nell'elenco base
+            assert parola.impara(["Andarun"], False) == ["Andarun"]
+            inglesi, italiane = parola.parole_note()
+            assert "Skyborne" in inglesi and italiane == ["Andarun"]
+            assert parola.impara(["andarun", "SKYBORNE"], True) == []  # già decise, in qualunque maiuscola
+        with mock.patch.object(config, "carica", return_value={}):  # Pocket TTS: grafie
+            assert parola.impara(["Lore is Magic"], True, "lòr is mègic") == ["Lore is Magic"]
+            assert parola.impara(["OBS"], True, "o bi esse") == ["OBS"]  # una grafia nota si corregge
+            assert "Lore is Magic (lòr is mègic)" in parola.parole_note()[0]
+            assert parola.con_grafie("Apro obs per la diretta di Lore is Magic, poi il livestreaming.", parola.grafie()) == \
+                "Apro o bi esse per la diretta di lòr is mègic, poi il livestreaming."  # solo parole intere
 
 
 def test_attivita():

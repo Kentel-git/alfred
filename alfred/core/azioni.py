@@ -144,10 +144,13 @@ async def _impara_pronuncia(parametri: dict) -> dict:
     from alfred.voce import parola
 
     inglese = parametri.get("inglese", True)
-    nuove = parola.impara(parametri.get("parole") or [], inglese)
+    grafia = (parametri.get("grafia") or "").strip()
+    nuove = parola.impara(parametri.get("parole") or [], inglese, grafia or None)
     if not nuove:
         return {"ok": True, "messaggio": "Le conoscevo già, signore."}
     elenco = ", ".join(f"«{p}»" for p in nuove)
+    if grafia:
+        return {"ok": True, "messaggio": f"D'ora in poi dirò {elenco} come «{grafia}», signore."}
     return {"ok": True, "messaggio": f"D'ora in poi pronuncerò {elenco} all'inglese, signore." if inglese
             else f"Lascerò {elenco} all'italiana, signore, e non glielo chiederò più."}
 

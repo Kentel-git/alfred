@@ -68,7 +68,7 @@ def personalita(appellativo: str) -> str:
     from alfred.voce import parola
 
     inglesi, italiane = parola.parole_note()
-    testo += (f"\n\n## Parole che pronunci all'inglese\n{', '.join(inglesi)}\n"
+    testo += (f"\n\n## Parole straniere che sai pronunciare\n{', '.join(inglesi)}\n"
               + (f"\nDa lasciare all'italiana (non chiedere più): {', '.join(italiane)}\n" if italiane else ""))
     if diario := _diario_recente():
         testo += f"\n\n## Il tuo diario dei giorni scorsi\n{diario}\n"

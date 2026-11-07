@@ -318,6 +318,56 @@ def test_second_brain():
             assert vault.diario_recente(7) == "## 2026-11-07\n- Ha collegato il vault."
 
 
+def test_routine():
+    import asyncio
+    import tempfile
+    from datetime import date, datetime
+    from pathlib import Path
+
+    from alfred import config
+    from alfred.core import iniziativa, routine
+    from alfred.tools import agenda, vault
+
+    with tempfile.TemporaryDirectory() as cartella:
+        wiki = Path(cartella) / "vault" / "wiki"
+        for d in ("Progetti", "Diario", "Risorse"):
+            (wiki / d).mkdir(parents=True)
+        nota = wiki / "Progetti" / "Alfred.md"
+        nota.write_text("# Alfred\n\n## Attività\n- [ ] dettatura @2026-11-08\n- [ ] vault @2026-11-01\n- [ ] grafica\n")
+        (wiki / "Inbox.md").write_text("# Inbox\n\n- corde per la chitarra\n- idea reel su Strahd\n- vecchia idea\n")
+        domenica = datetime(2026, 11, 8, 22, 5).astimezone()
+        with mock.patch.object(config, "carica", return_value={"vault": {"percorso": str(wiki.parent)}}), \
+                mock.patch.object(config, "CARTELLA_STATO", Path(cartella)), \
+                mock.patch.object(agenda, "pronta", return_value=False):
+            da_fare = vault.attivita(fino_a=domenica.date())
+            assert routine.frase_attivita(da_fare, domenica.date()) == \
+                "Attività in scadenza oggi: dettatura. Già scadute: vault."
+            routine.mattino(domenica.date(), "Buongiorno, signore.", da_fare)
+            briefing = (wiki / "Diario" / "2026-11-08.md").read_text()
+            assert "## Briefing\n- Buongiorno, signore.\n- da fare: vault (" in briefing  # prima le più vecchie
+            assert "- da fare: dettatura ([[wiki/Progetti/Alfred|Alfred]], scadenza 2026-11-08)" in briefing
+            nota.write_text(nota.read_text().replace("- [ ] dettatura", "- [x] dettatura"))
+            stato = {"briefing": "2026-11-08"}
+            assert iniziativa.da_proporre_chiusura(domenica, stato, config.leggi_stato(routine.FILE))
+            testo, revisione = asyncio.run(routine.chiusura(domenica))
+            assert "completato 1 attività: dettatura" in testo and revisione and "3 righe" in testo
+            asyncio.run(routine.chiusura(domenica))  # una seconda volta non scrive doppio
+            giorno = (wiki / "Diario" / "2026-11-08.md").read_text()
+            assert giorno.count("- dettatura ([[wiki/Progetti/Alfred|Alfred]])") == 1
+            assert not iniziativa.da_proporre_chiusura(domenica, stato, config.leggi_stato(routine.FILE))
+            assert vault.smista("Corde per la  chitarra", "attivita", "alfred", date(2026, 11, 9)) == "Progetti/Alfred"
+            assert "- [ ] corde per la chitarra @2026-11-09" in nota.read_text()
+            assert vault.smista("idea reel su Strahd", "risorsa", "Idee per i reel") == "Risorse/Idee per i reel"
+            assert vault.smista("vecchia idea", "via") == "Archivio/Inbox scartata"
+            assert "vecchia idea" in (wiki / "Archivio" / "Inbox scartata.md").read_text()  # spostata, non persa
+            assert vault.righe_inbox() == []
+            try:
+                vault.smista("non esiste", "via")
+                raise AssertionError("riga inesistente smistata")
+            except vault.VaultNonPronto:
+                pass
+
+
 if __name__ == "__main__":
     for nome, prova in list(globals().items()):
         if nome.startswith("test_"):

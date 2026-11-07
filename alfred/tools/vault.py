@@ -186,6 +186,103 @@ def nota_del_giorno(giorno: date) -> Path:
     return nota
 
 
+def scrivi_sezione(giorno: date, titolo: str, righe: list[str]) -> None:
+    """Aggiunge righe a una sezione della nota del giorno ("Briefing", "Fatto oggi")."""
+    nota = nota_del_giorno(giorno)
+    testo = nota.read_text()
+    nuove = [r for r in righe if r not in testo.splitlines()]  # due "buonanotte" non scrivono doppio
+    if nuove:
+        nota.write_text(_aggiungi_in_sezione(testo, titolo, nuove))
+
+
+def collegamento(nome: str) -> str:
+    """[[wiki/Progetti/Alfred|Alfred]]: il formato dei link del vault."""
+    return f"[[wiki/{nome}|{nome.rsplit('/', 1)[-1]}]]"
+
+
+def attivita_fatte(chiavi: set[tuple[str, str]]) -> list[dict]:
+    """Tra le attività indicate (nota, testo), quelle ora spuntate ("- [x]")."""
+    fatte, per_nota = [], {}
+    for nota, testo in chiavi:
+        per_nota.setdefault(nota, set()).add(testo)
+    wiki = _wiki()
+    for nota, testi in per_nota.items():
+        file = wiki / f"{nota}.md"
+        if not file.exists():
+            continue
+        for riga in file.read_text(errors="replace").splitlines():
+            m = re.match(r"^\s*- \[[xX]\]\s+(.+?)(?:\s+@\d{4}-\d{2}-\d{2})?\s*$", riga)
+            if m and m[1].strip() in testi:
+                fatte.append({"testo": m[1].strip(), "nota": nota})
+    return fatte
+
+
+# --- Inbox: la revisione settimanale -----------------------------------------------------
+
+def righe_inbox() -> list[str]:
+    inbox = _wiki() / "Inbox.md"
+    if not inbox.exists():
+        return []
+    corpo = _senza_frontmatter(inbox.read_text())
+    return [m[1].strip() for m in re.finditer(r"^- (?!\[)(.+)$", corpo, flags=re.M) if m[1].strip()]
+
+
+def _togli_da_inbox(riga: str) -> str:
+    inbox = _wiki() / "Inbox.md"
+    linee = inbox.read_text().split("\n")
+    cercata = _semplice(" ".join(riga.split()))
+    for i, l in enumerate(linee):
+        if l.startswith("- ") and _semplice(" ".join(l[2:].split())) == cercata:
+            originale = l[2:].strip()
+            inbox.write_text("\n".join(linee[:i] + linee[i + 1:]))
+            return originale
+    raise VaultNonPronto(f"nell'Inbox non c'è la riga «{riga}»")
+
+
+def smista(riga: str, destinazione: str, nota: str = "", scadenza: date | None = None,
+           testo: str = "") -> str:
+    """Toglie una riga dall'Inbox e la mette al suo posto. Restituisce dove è finita.
+
+    destinazione: "attivita" (nella nota di un progetto/area), "risorsa" (in fondo a una
+    nota esistente o in una nuova nota di Risorse), "via" (in Archivio/Inbox scartata,
+    perché nel vault non si cancella nulla)."""
+    if destinazione == "attivita" and not nota:
+        raise VaultNonPronto("in quale progetto o area va l'attività?")
+    if destinazione not in ("attivita", "risorsa", "via"):
+        raise VaultNonPronto("la destinazione è attivita, risorsa oppure via")
+    if destinazione == "attivita":
+        trova_nota(nota)  # prima di togliere la riga: se la nota non c'è, non si perde nulla
+    originale = _togli_da_inbox(riga)
+    contenuto = " ".join((testo or originale).split())
+    oggi = date.today().isoformat()
+    if destinazione == "attivita":
+        return aggiungi_attivita(nota, contenuto, scadenza)
+    wiki = _wiki()
+    if destinazione == "via":
+        destino = wiki / "Archivio" / "Inbox scartata.md"
+        if not destino.exists():
+            destino.parent.mkdir(parents=True, exist_ok=True)
+            destino.write_text(f"---\ntitle: Inbox scartata\nstatus: fatto\ncreated: {oggi}\nupdated: {oggi}\n"
+                               "tags:\n  - meta\n---\n# Inbox scartata\n\nRighe dell'Inbox lasciate andare durante le revisioni.\n")
+        destino.write_text(destino.read_text().rstrip("\n") + f"\n- {oggi}: {contenuto}\n")
+        return "Archivio/Inbox scartata"
+    try:
+        destino = trova_nota(nota) if nota else None
+    except VaultNonPronto:
+        destino = None
+    if destino:
+        destino.write_text(destino.read_text().rstrip("\n") + f"\n- {contenuto}\n")
+        return _nome(destino)
+    titolo = re.sub(r'[\\/:*?"<>|#^\[\]]', "", nota or contenuto)[:60].strip() or "Appunto"
+    destino = wiki / "Risorse" / f"{titolo}.md"
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    if not destino.exists():
+        destino.write_text(f"---\ntitle: \"{titolo}\"\nstatus: attivo\ncreated: {oggi}\nupdated: {oggi}\n"
+                           f"tags:\n  - risorsa\n---\n# {titolo}\n\n")
+    destino.write_text(destino.read_text().rstrip("\n") + f"\n\n- {contenuto}\n")
+    return _nome(destino)
+
+
 def scrivi_diario(giorno: date, riassunto: str) -> None:
     nota = nota_del_giorno(giorno)
     righe = [f"- {r.strip().removeprefix('- ')}" for r in riassunto.strip().splitlines() if r.strip()]

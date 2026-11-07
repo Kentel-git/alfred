@@ -18,10 +18,10 @@ from alfred.brain.claude import CervelloClaude, chiedi_una_volta
 from alfred.brain import gratuito
 from alfred.brain.economo import RISPOSTE_AUSTERITA, Economo
 from alfred.config import CARTELLA_STATO
-from alfred.core import attivita, comandi, iniziativa, limiti, meteo, parole
+from alfred.core import attivita, comandi, iniziativa, limiti, meteo, parole, routine
 from alfred.core.azioni import Gestore, descrizione_per_riferire
 from alfred.finestra import avvisa_desktop
-from alfred.tools import agenda, pc, telegram
+from alfred.tools import agenda, pc, telegram, vault
 from alfred.voce import ascolto, parola, sveglia
 
 FILE_CONVERSAZIONE = CARTELLA_STATO / "conversazione.json"
@@ -349,8 +349,17 @@ class Conversazione:
             tempo = await meteo.leggi(config.carica()["meteo"])  # appena avviato non c'è ancora in memoria
         except Exception:
             tempo = None
-        await self.di_sua_iniziativa(
-            iniziativa.testo_briefing(adesso, eventi, tempo, limiti.stato()), bloccato=False)
+        try:  # attività del second brain in scadenza oggi o già scadute
+            da_fare = await asyncio.to_thread(vault.attivita, adesso.date()) if vault.radice() else []
+        except Exception as errore:
+            log.warning("attività per il briefing non lette: %s", errore)
+            da_fare = []
+        testo = iniziativa.testo_briefing(adesso, eventi, tempo, limiti.stato(), da_fare)
+        await self.di_sua_iniziativa(testo, bloccato=False)
+        try:
+            await asyncio.to_thread(routine.mattino, adesso.date(), testo, da_fare)
+        except Exception:
+            log.exception("briefing non scritto nella nota del giorno")
 
     async def azione_da_hud(self, nome: str, parametri: dict) -> None:
         """Pulsanti dell'HUD."""

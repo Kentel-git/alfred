@@ -51,6 +51,7 @@ Ogni fase produce qualcosa di usabile da sola.
 - [x] dettatura: Mod+Shift+D, si parla e il testo compare dove c'è il cursore (wtype)
 - [x] controllo del PC a costo zero: apri app/cartelle/link, volume, pausa/play/avanti (playerctl), timer
 - [x] second brain: vault Obsidian ([vault] in config.toml); contesto sempre caricato, ricerca nelle note, cattura nell'Inbox, attività "- [ ] … @data" nelle note, diario di Alfred nella nota del giorno ("Chiusura serale"), tutto a costo zero
+- [x] routine del second brain: briefing con le attività in scadenza (scritto nella nota del giorno), chiusura serale ("buonanotte", o proposta alle 22: attività completate, domani, "Fatto oggi"), revisione dell'Inbox la domenica riga per riga (attività, risorsa o via, mai cancellata)
 - [x] sorveglianze a costo zero ("avvisami quando…"): fine di un programma, computer a riposo, file pronto, download, batteria, diretta/registrazione; timer e sorveglianze salvati (sopravvivono ai riavvii) e mostrati nel riquadro "Attività" dell'HUD
 - [x] Notion: cerca, legge, crea pagine e voci di database, aggiunge appunti, aggiorna campi; riscrivere ed eliminare con conferma ([NOTION.md](NOTION.md))
 - [x] tema "ologramma da laboratorio": nucleo ad anelli che segue gli stati di Alfred (riposo, ascolto, pensa, parla, lato cinico) con transizioni morbide; ciano per i dati, ambra per le parole di Alfred

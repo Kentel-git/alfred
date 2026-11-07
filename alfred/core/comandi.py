@@ -107,6 +107,9 @@ ATTIVITA_OGGI = [re.compile(schema) for schema in (
     rf"^(?:le\s+)?attivita\s+(?:di|per)\s+{GIORNO}$",
     rf"^(?:che|quali)\s+attivita\s+ho(?:\s+(?:per\s+)?{GIORNO})?$",
 )]
+CHIUSURA = re.compile(r"^(?:facciamo\s+(?:la\s+)?chiusura(?:\s+(?:serale|della\s+giornata))?|chiusura\s+(?:serale|della\s+giornata)"
+                      r"|chiudiamo\s+la\s+giornata|buonanotte)$")
+REVISIONE = re.compile(r"^(?:rivediamo|smistiamo|sistemiamo|svuotiamo)\s+l\s+inbox$|^revisione\s+(?:dell\s+)?inbox$")
 APRI = re.compile(r"^(?:apri|avvia|lancia|aprimi|fammi\s+vedere)\s+(?P<cosa>.+)$")
 
 
@@ -168,6 +171,10 @@ def riconosci(testo: str) -> tuple[str, dict] | None:
     for schema, azione in COMANDI:
         if schema.match(t):
             return azione, {}
+    if CHIUSURA.match(t):
+        return "chiusura_serale", {}
+    if REVISIONE.match(t):
+        return "revisione_inbox", {}
     for schema in ATTIVITA_OGGI:
         if m := schema.match(t):
             giorno = m.groupdict().get("giorno") or "oggi"

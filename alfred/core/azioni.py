@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from alfred import brain, config
-from alfred.core import attivita, parole, veglia
+from alfred.core import attivita, parole, routine, veglia
 from alfred.tools import agenda, gioco, notion, obs, pc, telegram, vault
 
 log = logging.getLogger("alfred.azioni")
@@ -425,6 +425,36 @@ def _attivita_di_oggi(p: dict) -> dict:
             + (f". Di queste, {len(scadute)} già scadute." if scadute else ".")}
 
 
+# --- Routine: chiusura serale e revisione dell'Inbox -----------------------------------
+
+async def _chiusura_serale(_p: dict) -> dict:
+    try:
+        testo, revisione = await routine.chiusura(datetime.now().astimezone())
+    except vault.VaultNonPronto as errore:
+        return {"ok": False, "messaggio": f"Non posso, signore: {errore}."}
+    # La domenica, se l'Inbox ha righe, resta in attesa il sì per la revisione.
+    return {"ok": True, "messaggio": testo, **({"poi": "proponi_revisione"} if revisione else {})}
+
+
+async def _revisione_inbox(_p: dict) -> dict:
+    try:
+        return {"ok": True, "messaggio": await asyncio.to_thread(routine.testo_revisione)}
+    except vault.VaultNonPronto as errore:
+        return {"ok": False, "messaggio": f"Non posso, signore: {errore}."}
+
+
+@_vault
+def _smista_inbox(p: dict) -> dict:
+    scadenza = giorno_richiesto(p["scadenza"]) if p.get("scadenza") else None
+    dove = vault.smista(p.get("riga") or "", p.get("destinazione") or "", p.get("nota") or "", scadenza,
+                        p.get("testo") or "")
+    restano = len(vault.righe_inbox())
+    fine = " L'Inbox è vuota." if not restano else f" Ne restano {restano}."
+    if p.get("destinazione") == "via":
+        return {"ok": True, "messaggio": f"Lasciata andare (resta in Archivio, Inbox scartata), signore.{fine}"}
+    return {"ok": True, "messaggio": f"Spostata in {dove.rsplit('/', 1)[-1]}, signore.{fine}"}
+
+
 async def _sveglia(accesa: bool) -> dict:
     from alfred.voce import sveglia
 
@@ -505,6 +535,11 @@ AZIONI = {a.nome: a for a in [
     Azione("impara_pronuncia", "", _impara_pronuncia),
     Azione("apri", "", _apri),
     Azione("cattura", "", _cattura),
+    Azione("chiusura_serale", "", _chiusura_serale),
+    Azione("proponi_chiusura", "Signore, facciamo la chiusura della giornata?", _chiusura_serale, sensibile=True),
+    Azione("revisione_inbox", "", _revisione_inbox),
+    Azione("proponi_revisione", "Smistiamo l'Inbox adesso, signore?", _revisione_inbox, sensibile=True),
+    Azione("smista_inbox", "", _smista_inbox),
     Azione("cerca_nota", "", _cerca_nota),
     Azione("leggi_nota", "", _leggi_nota),
     Azione("aggiungi_attivita", "", _aggiungi_attivita),
@@ -567,6 +602,8 @@ class Gestore:
             log.exception("azione %s fallita", azione.nome)
             esito = {"ok": False, "messaggio": f"Qualcosa è andato storto, signore: {errore}."}
         esito["azione"] = azione.nome
+        if poi := esito.pop("poi", None):  # un'azione che ne propone un'altra (resta in attesa del sì)
+            await self.richiedi(poi)
         if esito.get("ok") and azione.nome in ("crea_evento", "sposta_evento", "elimina_evento"):
             await self._invia(await agenda_per_hud())  # l'HUD si aggiorna subito
         return esito

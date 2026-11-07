@@ -99,3 +99,11 @@ anticipo_dirette = 30
 # diario nella nota del giorno (wiki/Diario/AAAA-MM-GG.md, sezione "Chiusura serale").
 # [vault]
 # percorso = "~/Documenti/Obsidian"
+
+# Le routine del second brain (servono [vault]). Chiusura serale: si chiede con
+# "buonanotte" o "facciamo la chiusura"; da quest'ora Alfred la propone, se non è
+# ancora stata fatta. Il giorno della revisione dell'Inbox (0 = lunedì, 6 = domenica)
+# la chiusura propone anche di smistarla.
+# [routine]
+# chiusura = 22
+# revisione_giorno = 6

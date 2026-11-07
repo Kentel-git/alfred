@@ -13,7 +13,7 @@ import subprocess
 from datetime import datetime, timedelta
 
 from alfred import config
-from alfred.core import parole
+from alfred.core import parole, routine
 from alfred.tools import agenda
 
 log = logging.getLogger("alfred.iniziativa")
@@ -63,6 +63,17 @@ def da_avvisare(eventi: list[dict], adesso: datetime, gia_avvisati: set[str], im
     return risultati
 
 
+def da_proporre_chiusura(adesso: datetime, stato: dict, stato_routine: dict) -> bool:
+    """Dall'ora della chiusura al silenzio, una volta al giorno, se non l'ha già fatta
+    e se oggi è passato dal computer (briefing fatto) e il second brain c'è."""
+    from alfred.tools import vault
+
+    oggi = adesso.date().isoformat()
+    return (adesso.hour >= routine.impostazioni()["chiusura"] and not ora_di_silenzio(adesso)
+            and stato.get("briefing") == oggi and stato.get("chiusura_proposta") != oggi
+            and stato_routine.get("chiusura") != oggi and vault.radice() is not None)
+
+
 def testo_promemoria(e: dict, adesso: datetime, diretta: bool) -> str:
     tra = parole.tra(round((datetime.fromisoformat(e["inizio"]) - adesso).total_seconds() / 60))
     if diretta:
@@ -71,13 +82,16 @@ def testo_promemoria(e: dict, adesso: datetime, diretta: bool) -> str:
     return f"Signore, {tra}: «{e['titolo']}»."
 
 
-def testo_briefing(adesso: datetime, eventi: list[dict] | None, meteo: dict | None, riserve: dict) -> str:
+def testo_briefing(adesso: datetime, eventi: list[dict] | None, meteo: dict | None, riserve: dict,
+                   attivita: list[dict] | None = None) -> str:
     saluto = "Buongiorno" if adesso.hour < 13 else "Buon pomeriggio" if adesso.hour < 18 else "Buonasera"
     parti = [f"{saluto}, signore. Sono le {parole.orario(adesso)}."]
     if meteo:
         parti.append(f"Fuori ci sono {meteo['temperatura']} gradi, {meteo['descrizione']}.")
     if eventi is not None:  # agenda non collegata: meglio tacere che dire "nessun impegno"
         parti.append(parole.elenco_eventi(eventi, "oggi").replace("Oggi, signore:", "Oggi:"))
+    if attivita:
+        parti.append(routine.frase_attivita(attivita, adesso.date()))
     if (regime := riserve.get("regime", {})).get("nome", "normale") != "normale":
         parti.append(f"Le riserve della settimana chiedono {regime['nome']}: {regime['motivo']}.")
     return " ".join(parti)
@@ -126,3 +140,7 @@ class Iniziativa:
         if not bloccato and not ora_di_silenzio(adesso) and stato.get("briefing") != oggi:
             config.salva_stato("iniziativa.json", briefing=oggi)
             await self.conversazione.nuovo_giorno(adesso)
+        elif not bloccato and da_proporre_chiusura(adesso, stato, config.leggi_stato(routine.FILE)):
+            config.salva_stato("iniziativa.json", chiusura_proposta=oggi)
+            esito = await self.conversazione.azioni.richiedi("proponi_chiusura")
+            await self.conversazione.di_sua_iniziativa(esito["messaggio"], bloccato)

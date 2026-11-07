@@ -166,6 +166,35 @@ async def aggiungi_attivita(nota: str, testo: str, scadenza: str | None = None) 
     return await _azione("aggiungi_attivita", {"nota": nota, "testo": testo, "scadenza": scadenza})
 
 
+@server.tool(annotations=AZIONE)
+async def chiusura_serale() -> dict:
+    """La chiusura della giornata: attività completate oggi, impegni e attività
+    di domani, scritti nella nota del giorno. La domenica propone la revisione
+    dell'Inbox."""
+    return await _azione("chiusura_serale")
+
+
+@server.tool(annotations=SOLA_LETTURA)
+async def revisione_inbox() -> dict:
+    """Le righe dell'Inbox da smistare, una per una, con Pietro."""
+    return await _azione("revisione_inbox")
+
+
+@server.tool(annotations=AZIONE)
+async def smista_inbox(riga: str, destinazione: str, nota: str = "", scadenza: str | None = None,
+                       testo: str = "") -> dict:
+    """Toglie una riga dall'Inbox (testo esatto, da revisione_inbox) e la mette
+    dove ha deciso Pietro. destinazione:
+    - "attivita": un'attività nella nota del progetto o dell'area "nota",
+      con scadenza facoltativa ("domani", AAAA-MM-GG)
+    - "risorsa": in fondo alla nota "nota" se esiste, altrimenti in una nuova
+      nota di Risorse con quel titolo
+    - "via": lasciata andare (finisce in Archivio, Inbox scartata)
+    testo: come riscriverla, se va riformulata."""
+    return await _azione("smista_inbox", {"riga": riga, "destinazione": destinazione, "nota": nota,
+                                          "scadenza": scadenza, "testo": testo})
+
+
 @server.tool(annotations=SOLA_LETTURA)
 async def attivita_di_oggi(giorno: str = "oggi") -> dict:
     """Attività del second brain in scadenza entro quel giorno ("oggi",

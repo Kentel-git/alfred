@@ -112,3 +112,10 @@ anticipo_dirette = 30
 # [routine]
 # chiusura = 22
 # revisione_giorno = 6
+
+# Trascrizione (faster-whisper, su CPU). "modello" capisce ciò che dici (small è
+# rapido, medium più preciso ma ~3 s a frase); "modello_sveglia" serve solo a
+# riconoscere il nome "Alfred" e resta sempre caricato (base: ~0,4 s).
+# [ascolto]
+# modello = "small"
+# modello_sveglia = "base"

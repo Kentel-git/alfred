@@ -130,6 +130,7 @@ class Sveglia:
                         riconoscitore.reset_stream(flusso)
                 if scattata:
                     log.info("forse ho sentito il mio nome: verifico")
+                    asyncio.create_task(ascolto.prepara())  # se il modello grande riposa, si sveglia ora
                     if self._quando_forse:
                         self._quando_forse()
                     gia_sentito = np.concatenate(precedente)
@@ -148,10 +149,16 @@ class Sveglia:
         audio = await ascolto.fino_al_silenzio(processo, gia_sentito)
         if audio is None:
             return
-        testo = await ascolto.trascrivi(audio)
+        testo = await ascolto.trascrivi(audio, veloce=True)  # basta per sentire il nome
         esito, comando = verifica(testo)
         if esito == "no":
             log.info("falso allarme scartato: «%s»", testo)
             return
+        if esito == "chiamata":
+            # Il comando detto d'un fiato lo capisce il modello grande.
+            testo = await ascolto.trascrivi(audio)
+            esito, comando = verifica(testo)
+            if esito == "no":  # il grande non sente il nome all'inizio: il comando è tutta la frase
+                esito, comando = "chiamata", testo
         log.info("chiamato (%s): «%s»", esito, testo)
         await self._quando_chiamato(esito, comando)

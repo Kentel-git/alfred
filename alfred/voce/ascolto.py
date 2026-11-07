@@ -28,8 +28,9 @@ CONTROLLO_OGNI_S = 0.25
 # Vocabolario che aiuta Whisper con nomi propri e termini di casa.
 VOCABOLARIO_BASE = "Alfred, OBS, diretta, registrazione, scena, agenda, riserve, Inbox, briefing, Telegram, Notion, Battle.net, CurseForge, standby."
 
-_modello = None
+_modelli: dict = {}  # nome → WhisperModel
 _blocco_modello = asyncio.Lock()
+THREAD = 4  # misurati sul Core Ultra 7 155H: più thread finiscono sui core lenti e rallentano
 _ultimo_uso = time.monotonic()
 # Dopo questa inattività il modello si scarica: libera ~1,6 GB (medium) e alla
 # prossima frase si ricarica in ~1,5 s.
@@ -38,7 +39,8 @@ RIPOSO_S = 600
 
 def _impostazioni() -> dict:
     return {
-        "modello": "small",
+        "modello": "small",  # trascrive ciò che Pietro dice
+        "modello_sveglia": "base",  # verifica solo il nome "Alfred": 0,4 s invece di 3,7 col medium
         "fine_frase_s": 0.9,  # silenzio che chiude la frase
         "attesa_inizio_s": 6,  # se non si parla entro questo tempo, si rinuncia
         "durata_massima_s": 30,
@@ -46,34 +48,36 @@ def _impostazioni() -> dict:
     } | config.carica().get("ascolto", {})
 
 
-async def _carica_modello():
-    global _modello
+async def _carica_modello(veloce: bool = False):
+    nome = _impostazioni()["modello_sveglia" if veloce else "modello"]
     async with _blocco_modello:
-        if _modello is None:
+        if nome not in _modelli:
             from faster_whisper import WhisperModel
 
-            nome = _impostazioni()["modello"]
             inizio = time.monotonic()
-            _modello = await asyncio.to_thread(
-                WhisperModel, nome, device="cpu", compute_type="int8", cpu_threads=8
+            _modelli[nome] = await asyncio.to_thread(
+                WhisperModel, nome, device="cpu", compute_type="int8", cpu_threads=THREAD
             )
             log.info("trascrizione (%s) pronta in %.1f s", nome, time.monotonic() - inizio)
-    return _modello
+    return _modelli[nome]
 
 
 async def prepara() -> None:
-    """Carica il modello in anticipo, così la prima frase non aspetta."""
+    """Carica i modelli in anticipo, così la prima frase non aspetta."""
+    await _carica_modello(veloce=True)
     await _carica_modello()
 
 
 async def riposa() -> None:
     """Scarica il modello quando non serve da un po'."""
-    global _modello
     while True:
         await asyncio.sleep(60)
-        if _modello is None or time.monotonic() - _ultimo_uso < RIPOSO_S or _blocco_modello.locked():
+        imp = _impostazioni()
+        nome = imp["modello"]  # quello della sveglia è piccolo e resta: il nome si riconosce subito
+        if nome not in _modelli or nome == imp["modello_sveglia"] or time.monotonic() - _ultimo_uso < RIPOSO_S \
+                or _blocco_modello.locked():
             continue
-        _modello = None  # una trascrizione in corso tiene ancora il suo riferimento
+        del _modelli[nome]  # una trascrizione in corso tiene ancora il suo riferimento
         gc.collect()
         try:  # senza, al sistema torna solo metà della memoria
             ctypes.CDLL("libc.so.6").malloc_trim(0)
@@ -82,8 +86,9 @@ async def riposa() -> None:
         log.info("trascrizione a riposo: modello scaricato")
 
 
-async def trascrivi(audio: np.ndarray) -> str:
-    modello = await _carica_modello()
+async def trascrivi(audio: np.ndarray, veloce: bool = False) -> str:
+    """veloce: col modello piccolo della sveglia (per riconoscere il nome, non per capire comandi)."""
+    modello = await _carica_modello(veloce)
     imp = _impostazioni()
     prompt = f"{VOCABOLARIO_BASE} {imp['vocabolario']}".strip()
 
@@ -97,8 +102,9 @@ async def trascrivi(audio: np.ndarray) -> str:
     global _ultimo_uso
     inizio = time.monotonic()
     testo = await asyncio.to_thread(lavora)
-    _ultimo_uso = time.monotonic()
-    log.info("trascritto in %.1f s: %s", time.monotonic() - inizio, testo)
+    if not veloce:
+        _ultimo_uso = time.monotonic()
+    log.info("trascritto%s in %.1f s: %s", " (sveglia)" if veloce else "", time.monotonic() - inizio, testo)
     return testo
 
 

@@ -215,13 +215,13 @@ def test_notion_testo_e_proprieta():
 def test_pronuncia_inglese():
     from kokoro_onnx.tokenizer import Tokenizer
 
-    from alfred.voce.parola import INGLESE_BASE, fonemi
+    from alfred.voce.parola import PAROLE_NOTE_BASE, fonemi
 
     vocabolario = Tokenizer().vocab
-    misto = fonemi("Lo streaming su YouTube parte alle 21.", INGLESE_BASE, vocabolario)
+    misto = fonemi("Lo streaming su YouTube parte alle 21.", PAROLE_NOTE_BASE, vocabolario)
     assert "juː" in misto and "ventˈuno" in misto and "(en)" not in misto and "en" not in misto.split()[1]
     assert fonemi("Il link è nel linkage.", ["link"], vocabolario).count("lˈɪŋk") == 1  # solo la parola intera
-    italiano = fonemi("Nessuna parola inglese qui.", INGLESE_BASE, vocabolario)
+    italiano = fonemi("Nessuna parola inglese qui.", PAROLE_NOTE_BASE, vocabolario)
     assert italiano == fonemi("Nessuna parola inglese qui.", [], vocabolario)
 
 
@@ -232,21 +232,22 @@ def test_impara_pronuncia():
     from alfred import config
     from alfred.voce import parola
 
-    kokoro = {"voce": {"motore": "kokoro"}}
-    with tempfile.TemporaryDirectory() as cartella, mock.patch.object(config, "CARTELLA_STATO", Path(cartella)):
-        with mock.patch.object(config, "carica", return_value=kokoro):
-            assert parola.impara(["Skyborne", "notion", " ", "Skyborne"], True) == ["Skyborne"]  # Notion c'è già
-            assert parola.impara(["post"], False) == []  # già nell'elenco base
-            assert parola.impara(["Andarun"], False) == ["Andarun"]
-            inglesi, italiane = parola.parole_note()
-            assert "Skyborne" in inglesi and italiane == ["Andarun"]
-            assert parola.impara(["andarun", "SKYBORNE"], True) == []  # già decise, in qualunque maiuscola
-        with mock.patch.object(config, "carica", return_value={}):  # Pocket TTS: grafie
-            assert parola.impara(["Lore is Magic"], True, "lòr is mègic") == ["Lore is Magic"]
-            assert parola.impara(["OBS"], True, "o bi esse") == ["OBS"]  # una grafia nota si corregge
-            assert "Lore is Magic (lòr is mègic)" in parola.parole_note()[0]
-            assert parola.con_grafie("Apro obs per la diretta di Lore is Magic, poi il livestreaming.", parola.grafie()) == \
-                "Apro o bi esse per la diretta di lòr is mègic, poi il livestreaming."  # solo parole intere
+    with tempfile.TemporaryDirectory() as cartella, mock.patch.object(config, "CARTELLA_STATO", Path(cartella)), \
+            mock.patch.object(config, "carica", return_value={}):
+        # Pronuncia ricavata da sola: niente elenchi da scrivere a mano.
+        assert parola.pronuncia("OBS") == "obiesse"  # sigla compitata all'italiana
+        assert [parola.pronuncia(p) for p in ("streaming", "desk", "Twitch", "Discord")] == \
+            ["strìming", "dèsk", "tuìcc", "dìscord"]
+        detto = "Ho aperto ‹Skyborne› su ‹YouTube› e OBS, poi lo streaming."
+        assert parola.visibile(detto) == "Ho aperto Skyborne su YouTube e OBS, poi lo streaming."
+        assert parola.parole_nuove(detto) == ["Skyborne"]  # YouTube è già confermata
+        assert parola.per_pocket(detto) == f"Ho aperto {parola.pronuncia('Skyborne')} su iu tùb e obiesse, poi lo strìming."
+        assert parola.per_pocket("Il livestreaming e l'obs.") == "Il livestreaming e l'obs."  # parole intere, sigle maiuscole
+        assert parola.impara(["Skyborne"], True) == ["Skyborne"] and parola.parole_nuove(detto) == []  # "sì"
+        assert parola.impara(["Skyborne"], True, "scàibòrn") == ["Skyborne"]  # correzione
+        assert parola.per_pocket("‹Skyborne›") == "scàibòrn"
+        assert parola.impara(["Andarun"], False) == ["Andarun"]
+        assert parola.per_pocket("‹Andarun›") == "Andarun" and parola.parole_nuove("‹andarun›") == []
 
 
 def test_attivita():

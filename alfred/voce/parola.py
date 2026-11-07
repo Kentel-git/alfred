@@ -11,6 +11,7 @@ così Alfred comincia a parlare quasi subito, anche mentre il cervello scrive.
 """
 
 import asyncio
+import functools
 import logging
 import os
 import re
@@ -27,71 +28,149 @@ CARTELLA_MODELLI = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/sh
 MODELLO = CARTELLA_MODELLI / "kokoro-v1.0.onnx"
 VOCI = CARTELLA_MODELLI / "voices-v1.0.bin"
 PAUSA_S = 0.28
-# Parole inglesi lette con la pronuncia inglese (britannica, come Fable) invece
-# che all'italiana; altre si aggiungono in config.toml, [voce] inglese = [...].
-INGLESE_BASE = ["Notion", "YouTube", "Discord", "Twitch", "streaming", "streamer", "live", "just chatting",
-                "Battle.net", "CurseForge", "Steam", "gaming", "email", "link", "desk", "addon", "raid",
-                "World of Warcraft", "Warcraft", "standby", "podcast", "reel", "post", "feedback"]
-
-# Con Pocket TTS (che legge testo, non fonemi) le parole straniere si riscrivono
-# come si pronunciano; altre in config.toml, [voce] grafie = {"parola" = "grafia"}.
-GRAFIE_BASE = {
-    "OBS": "obiesse", "Notion": "nòscion", "YouTube": "iutùb", "Discord": "dìscord", "Twitch": "tuìcc",
-    "streaming": "strìming", "streamer": "strìmer", "live": "làiv", "just chatting": "giàst ciàtting",
-    "Battle.net": "bàttol net", "CurseForge": "kèrs fòrg", "Steam": "stìm", "gaming": "ghèiming",
-    "email": "imèil", "desk": "dèsk", "addon": "àddon", "raid": "rèid", "World of Warcraft": "uòrld of uòrcraft",
-    "Warcraft": "uòrcraft", "standby": "stendbài", "reel": "rìl", "feedback": "fìdbec", "Claude": "clòd",
-}
-
-_kokoro = None
-_pocket = None  # (modello, stato della voce)
-_blocco = asyncio.Lock()
-
-
-FILE_PRONUNCE = "pronuncia.json"  # parole imparate parlando con Pietro
-
-
-def grafie() -> dict[str, str]:
-    """Parola straniera → come scriverla perché Pocket TTS la pronunci bene."""
-    return GRAFIE_BASE | _impostazioni()["grafie"] | config.leggi_stato(FILE_PRONUNCE).get("grafie", {})
+# Con Pocket TTS (che legge testo, non fonemi) le parole straniere si dicono
+# scrivendole come si pronunciano. Il cervello le segna ‹così› mentre scrive; la
+# pronuncia si ricava da sola (espeak, inglese americano) e Pietro la può correggere.
+MARCA = re.compile(r"‹([^‹›]+)›")
+# Già sentite e approvate da Pietro (7 nov 2026): la loro pronuncia automatica va bene.
+PAROLE_NOTE_BASE = ["OBS", "Notion", "YouTube", "Discord", "Twitch", "streaming", "streamer", "live",
+                    "just chatting", "Battle.net", "CurseForge", "Steam", "gaming", "email", "desk", "addon",
+                    "raid", "World of Warcraft", "Warcraft", "standby", "reel", "feedback", "Claude", "link"]
+LETTERE = dict(zip("ABCDEFGHIJKLMNOPQRSTUVWXYZ", [
+    "a", "bi", "ci", "di", "e", "effe", "gi", "acca", "i", "i lunga", "cappa", "elle", "emme", "enne", "o",
+    "pi", "cu", "erre", "esse", "ti", "u", "vu", "doppia vu", "ics", "ipsilon", "zeta"]))
+# Fonemi inglesi (espeak en-us) → lettere italiane. Si prova prima il simbolo più lungo.
+VOCALI = {"ɚ": "er", "ɝ": "er", "ɜː": "er", "ɜ": "e", "oʊ": "o", "iː": "i", "ɪə": "ia", "eə": "ea", "ʊə": "ua",
+          "eɪ": "ei", "aɪ": "ai", "ɔɪ": "oi", "aʊ": "au", "əʊ": "o", "ɑː": "a", "ɔː": "o", "uː": "u", "i": "i",
+          "ɪ": "i", "e": "e", "ɛ": "e", "a": "a", "æ": "a", "ʌ": "a", "ɒ": "o", "ʊ": "u", "ə": "e", "ɐ": "a",
+          "o": "o", "u": "u", "ɔ": "o"}
+CONSONANTI = {"tʃ": "C", "dʒ": "G", "ʃ": "S", "ʒ": "G", "θ": "t", "ð": "d", "ŋ": "ng", "ɹ": "r", "r": "r",
+              "j": "i", "w": "u", "k": "k", "ɡ": "g", "g": "g", "p": "p", "b": "b", "t": "t", "d": "d", "f": "f",
+              "v": "v", "s": "s", "z": "s", "h": "h", "m": "m", "n": "n", "l": "l", "ɾ": "t", "x": "k"}
+ACCENTATE = dict(zip("aeiou", "àèìòù"))
+SIMBOLI = sorted([*VOCALI, *CONSONANTI], key=len, reverse=True)
 
 
-def parole_note() -> tuple[list[str], list[str]]:
-    """(parole straniere che la voce sa pronunciare, parole che Pietro ha voluto all'italiana)."""
-    imparate = config.leggi_stato(FILE_PRONUNCE)
-    italiane = imparate.get("italiano", [])
-    if _impostazioni()["motore"] == "pocket":
-        return [f"{p} ({g})" for p, g in grafie().items()], italiane
-    return INGLESE_BASE + _impostazioni()["inglese"] + imparate.get("inglese", []), italiane
+def visibile(testo: str) -> str:
+    """Il testo da mostrare: senza i segni delle parole straniere."""
+    return testo.replace("‹", "").replace("›", "")
+
+
+def _lettere(fonemi: str) -> str:
+    """Una parola in fonemi inglesi → come la leggerebbe un italiano."""
+    pezzi, accento, i = [], False, 0
+    while i < len(fonemi):
+        if fonemi[i] == "ˈ":
+            accento, i = True, i + 1
+            continue
+        s = next((s for s in SIMBOLI if fonemi.startswith(s, i)), None)
+        i += len(s) if s else 1
+        if not s:
+            continue
+        if s in VOCALI:
+            v = VOCALI[s]
+            if accento:
+                v, accento = ACCENTATE[v[0]] + v[1:], False
+            pezzi.append(("v", v))
+        else:
+            pezzi.append(("c", CONSONANTI[s]))
+    uscita = ""
+    for j, (_, t) in enumerate(pezzi):
+        dopo = pezzi[j + 1] if j + 1 < len(pezzi) else None
+        dolce = bool(dopo) and dopo[1][0] in "eièì"
+        if t == "k":
+            t = "ch" if dolce else "c" if dopo and dopo[1][0] in "aouàòùlr" else "k"
+        elif t == "g":
+            t = "gh" if dolce else "g"
+        elif t in "CGS":
+            base = {"C": "c", "G": "g", "S": "sc"}[t]
+            if not dopo:  # in fondo: Twitch → tuìcc
+                t = {"C": "cc", "G": "g", "S": "sc"}[t]
+            else:
+                t = base if dolce or dopo[0] == "c" else base + "i"
+        uscita += t
+    return uscita
+
+
+@functools.lru_cache(maxsize=512)
+def pronuncia_automatica(parola: str) -> str:
+    if re.fullmatch(r"[A-Z]{2,5}", parola):  # sigla: si compita all'italiana (OBS → obiesse)
+        return "".join(LETTERE[c] for c in parola)
+    import phonemizer
+    from kokoro_onnx.tokenizer import Tokenizer
+
+    Tokenizer()  # indica a phonemizer dove trovare espeak
+    fonemi = phonemizer.phonemize(parola, "en-us", with_stress=True, preserve_punctuation=False)
+    return " ".join(_lettere(p) for p in fonemi.split()) or parola
+
+
+FILE_PRONUNCE = "pronuncia.json"  # ciò che Pietro ha confermato o corretto
+
+
+def _stato() -> dict:
+    return config.leggi_stato(FILE_PRONUNCE)
+
+
+def correzioni() -> dict[str, str]:
+    """Parola → grafia scelta da Pietro (config.toml e quelle insegnate a voce)."""
+    return {k.lower(): v for k, v in (_impostazioni()["grafie"] | _stato().get("grafie", {})).items()}
+
+
+def confermate() -> set[str]:
+    stato = _stato()
+    return {p.lower() for p in [*PAROLE_NOTE_BASE, *stato.get("confermate", []), *_impostazioni()["inglese"]]} \
+        | set(correzioni())
+
+
+def all_italiana() -> set[str]:
+    return {p.lower() for p in _stato().get("italiano", [])}
+
+
+def pronuncia(parola: str) -> str:
+    if parola.lower() in all_italiana():
+        return parola
+    return correzioni().get(parola.lower()) or pronuncia_automatica(parola)
+
+
+def per_pocket(frase: str) -> str:
+    """Il testo da far leggere: parole segnate e parole già note scritte come si pronunciano."""
+    frase = MARCA.sub(lambda m: pronuncia(m[1]), frase)
+    note = sorted(confermate() - all_italiana(), key=len, reverse=True)
+    if not note:
+        return frase
+    schema = r"(?<![\w‹])(" + "|".join(re.escape(p) for p in note) + r")(?![\w›])"
+    # Le sigle (OBS) solo scritte in maiuscolo: "obs" minuscolo potrebbe essere altro.
+    sigle = {p.lower() for p in [*PAROLE_NOTE_BASE, *_stato().get("confermate", [])] if p.isupper()}
+    return re.sub(schema, lambda m: pronuncia(m[1]) if m[1].lower() not in sigle or m[1].isupper() else m[1],
+                  frase, flags=re.IGNORECASE)
+
+
+def parole_nuove(testo: str) -> list[str]:
+    """Le parole segnate dal cervello che Pietro non ha ancora confermato."""
+    note = confermate() | all_italiana()
+    return list(dict.fromkeys(p for p in MARCA.findall(testo) if p.lower() not in note))
 
 
 def impara(parole: list[str], inglese: bool, grafia: str | None = None) -> list[str]:
-    """Aggiunge parole all'elenco inglese (con grafia: alle grafie di Pocket TTS),
-    o a quelle da lasciare all'italiana, così Alfred non lo chiede di nuovo.
-    Restituisce quelle davvero nuove (con una grafia, la parola anche se c'era: si corregge)."""
-    stato = config.leggi_stato(FILE_PRONUNCE)
-    if inglese and grafia:
-        parola = parole[0].strip() if parole else ""
-        if not parola:
-            return []
-        config.salva_stato(FILE_PRONUNCE, grafie=stato.get("grafie", {}) | {parola: grafia.strip()})
-        return [parola]
-    note = {p.lower() for p in INGLESE_BASE + _impostazioni()["inglese"] + stato.get("inglese", [])
-            + stato.get("italiano", []) + list(grafie())}
-    nuove = list(dict.fromkeys(p.strip() for p in parole if p.strip() and p.strip().lower() not in note))
+    """Pietro conferma una pronuncia (inglese, senza grafia), la corregge (con grafia)
+    o vuole la parola all'italiana (inglese=False). Restituisce le parole toccate."""
+    stato, parole = _stato(), [p.strip() for p in parole if p.strip()]
+    if not parole:
+        return []
+    if grafia:
+        config.salva_stato(FILE_PRONUNCE, grafie=stato.get("grafie", {}) | {parole[0]: grafia.strip()})
+        return parole[:1]
+    chiave = "confermate" if inglese else "italiano"
+    gia = {p.lower() for p in stato.get(chiave, [])} | (confermate() if inglese else set())
+    nuove = list(dict.fromkeys(p for p in parole if p.lower() not in gia))
     if nuove:
-        chiave = "inglese" if inglese else "italiano"
         config.salva_stato(FILE_PRONUNCE, **{chiave: stato.get(chiave, []) + nuove})
     return nuove
 
 
-def con_grafie(frase: str, mappa: dict[str, str]) -> str:
-    """Sostituisce le parole straniere con la loro grafia italiana (parole intere)."""
-    if not mappa:
-        return frase
-    schema = r"(?<!\w)(" + "|".join(re.escape(p) for p in sorted(mappa, key=len, reverse=True)) + r")(?!\w)"
-    minuscole = {p.lower(): g for p, g in mappa.items()}
-    return re.sub(schema, lambda m: minuscole[m[1].lower()], frase, flags=re.IGNORECASE)
+_kokoro = None
+_pocket = None  # (modello, stato della voce)
+_blocco = asyncio.Lock()
 
 
 def _impostazioni() -> dict:
@@ -270,7 +349,7 @@ async def sintetizza(frase: str) -> tuple[np.ndarray, int]:
     imp = _impostazioni()
     if imp["motore"] == "pocket":
         modello, voce = await _modello_pocket()
-        testo = con_grafie(frase, grafie())
+        testo = per_pocket(frase)
         # Pocket intona da sé le domande: niente ritocco con pyworld.
         audio = await asyncio.to_thread(lambda: modello.generate_audio(voce, testo).numpy())
         return _taglia(audio.astype(np.float32)), modello.sample_rate
@@ -278,7 +357,8 @@ async def sintetizza(frase: str) -> tuple[np.ndarray, int]:
 
     def lavora():
         voce = sum(p * kokoro.get_voice_style(v) for v, p in imp["voce"].items())
-        f = fonemi(frase, parole_note()[0], kokoro.tokenizer.vocab)
+        inglesi = sorted(confermate() | {p.lower() for p in MARCA.findall(frase)})
+        f = fonemi(visibile(frase), inglesi, kokoro.tokenizer.vocab)
         audio, sr = kokoro.create(f, voice=voce, speed=imp["velocita"], is_phonemes=True)
         audio = _taglia(audio)
         if imp["domande"] and frase.rstrip().endswith("?"):

@@ -65,9 +65,9 @@ async def _a_telegram(testo: str, conferma_id: str | None = None, vocale: bool =
             config.CARTELLA_RUNTIME.mkdir(parents=True, exist_ok=True)
             with tempfile.TemporaryDirectory(dir=config.CARTELLA_RUNTIME) as cartella:
                 percorso = await parola.in_vocale(testo, Path(cartella) / "risposta.ogg")
-                await telegram.invia_vocale(percorso, testo)
+                await telegram.invia_vocale(percorso, parola.visibile(testo))
         else:
-            await telegram.invia(testo, conferma_id, silenzioso)
+            await telegram.invia(parola.visibile(testo), conferma_id, silenzioso)
     except Exception as errore:
         log.warning("risposta Telegram non inviata: %s", errore)
 
@@ -95,6 +95,7 @@ class Conversazione:
         self._ascolto: ascolto.Ascolto | None = None
         self._discorso: parola.Discorso | None = None
         self._vocale_telegram = False  # l'ultimo messaggio Telegram era un vocale
+        self._pronunce_chieste: set[str] = set()  # una domanda per parola a sessione
         # Sentendo il suo nome mentre parla, Alfred si zittisce subito: aspettare la
         # fine della frase vorrebbe dire aspettare il silenzio, che con la sua
         # voce in sottofondo non arriverebbe.
@@ -148,6 +149,14 @@ class Conversazione:
             nome, parametri = comando
             if nome == "zittisci":
                 self.zittisci()  # nessuna risposta: il silenzio è la risposta
+                return
+            attesa = self.azioni.stato_attesa()
+            if nome == "annulla" and attesa and self.azioni.in_attesa["nome"] == "conferma_pronuncia" \
+                    and len(testo.split()) > 2:
+                # "No, si dice…": la correzione la capisce il cervello, non va buttata via.
+                self.azioni.in_attesa = None
+                await self._invia({"tipo": "conferma_chiusa", "id": attesa["id"]})
+                asyncio.create_task(self._rispondi(testo))
                 return
             if nome in ("conferma", "annulla"):
                 esito = await self.azioni.conferma(nome == "conferma")
@@ -391,7 +400,7 @@ class Conversazione:
             if storia and storia[-1]["role"] == "user":
                 storia[-1]["content"] = f"{_contesto(origine)}\n{storia[-1]['content']}"
             libera = await gratuito.chiedi(storia, brain.personalita(self.cervello.appellativo) + SENZA_STRUMENTI)
-            messaggio = {"chi": "alfred", "testo": libera or RISPOSTE_AUSTERITA[0], "quando": time.time(),
+            messaggio = {"chi": "alfred", "testo": parola.visibile(libera or "") or RISPOSTE_AUSTERITA[0], "quando": time.time(),
                          "modello": "gratuito" if libera else None}
             self.messaggi.append(messaggio)
             self._salva()
@@ -418,7 +427,7 @@ class Conversazione:
             async for evento in self.cervello.chiedi(f"{_contesto(origine)}\n{riferimenti}{testo}", modello):
                 match evento["tipo"]:
                     case "parziale":
-                        await self._invia({"tipo": "risposta_parziale", "testo": evento["testo"]})
+                        await self._invia({"tipo": "risposta_parziale", "testo": parola.visibile(evento["testo"])})
                         if discorso:
                             discorso.aggiungi(evento["testo"] or " ")
                     case "strumento":
@@ -439,7 +448,7 @@ class Conversazione:
         self.occupato = False
         messaggio = {
             "chi": "alfred",
-            "testo": risposta.strip() or "Perdoni, signore: ho perso il filo del discorso. Può ripetere?",
+            "testo": parola.visibile(risposta).strip() or "Perdoni, signore: ho perso il filo del discorso. Può ripetere?",
             "quando": time.time(),
             "modello": modello,
         }
@@ -455,7 +464,27 @@ class Conversazione:
             discorso.fine()
         if scrivendo:
             scrivendo.cancel()
-            await _a_telegram(messaggio["testo"], vocale=self._vocale_telegram)
+            await _a_telegram(risposta.strip() or messaggio["testo"], vocale=self._vocale_telegram)
+        if discorso or (scrivendo and self._vocale_telegram):  # detta a voce: parole nuove da verificare
+            if nuove := [p for p in parola.parole_nuove(risposta) if p.lower() not in self._pronunce_chieste]:
+                asyncio.create_task(self._chiedi_pronuncia(nuove[0], discorso, origine))
+
+    async def _chiedi_pronuncia(self, nuova: str, discorso: "parola.Discorso | None", origine: str) -> None:
+        """Alfred ha appena detto una parola straniera mai confermata: chiede se va bene."""
+        self._pronunce_chieste.add(nuova.lower())
+        if discorso:
+            await discorso.compito  # prima finisce la risposta
+        esito = await self.azioni.richiedi("conferma_pronuncia", {"parole": [nuova], "inglese": True})
+        grafia = parola.pronuncia(nuova)
+        self._da_riferire = [*self._da_riferire, f"hai chiesto a {self.cervello.appellativo} se la tua pronuncia "
+                             f"di «{nuova}» (grafia «{grafia}») va bene"][-10:]
+        messaggio = {"chi": "alfred", "testo": esito["messaggio"], "quando": time.time(), "modello": None}
+        self.messaggi.append(messaggio)
+        self._salva()
+        await self._invia({"tipo": "messaggio", "messaggio": messaggio})
+        if origine == "voce" and (nuovo_discorso := self._parla()):
+            nuovo_discorso.aggiungi(f"Ho detto ‹{nuova}› così: va bene, signore?")
+            nuovo_discorso.fine()
 
     @staticmethod
     async def _sta_scrivendo() -> None:

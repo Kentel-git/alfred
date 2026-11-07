@@ -351,11 +351,11 @@ async def annulla_attivita(id: str | None = None, tipo: str | None = None) -> di
 
 @server.tool(annotations=AZIONE)
 async def impara_pronuncia(parole: list[str], inglese: bool = True, grafia: str = "") -> dict:
-    """Dopo il sì di Pietro, insegna alla tua voce una parola o un nome
-    straniero (anche di più termini, es. "Lore is Magic"). grafia: come
-    scriverlo in italiano perché suoni giusto (es. "lòr is mègic"), una parola
-    per volta; serve con la voce attuale e corregge anche una grafia già nota.
-    Con inglese=false la parola resta all'italiana e non lo chiedi più."""
+    """Corregge la pronuncia di una parola o di un nome straniero (anche di più
+    termini, es. "Lore is Magic") quando Pietro ti dice come si dice. grafia:
+    come scriverlo in italiano, con gli accenti, perché la tua voce lo dica
+    giusto (es. "lòr is mègic"); una parola per volta. Con inglese=false la
+    parola si legge all'italiana. Senza grafia, conferma la pronuncia attuale."""
     return await _azione("impara_pronuncia", {"parole": parole, "inglese": inglese, "grafia": grafia})
 
 

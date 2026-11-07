@@ -151,8 +151,12 @@ async def _impara_pronuncia(parametri: dict) -> dict:
     elenco = ", ".join(f"«{p}»" for p in nuove)
     if grafia:
         return {"ok": True, "messaggio": f"D'ora in poi dirò {elenco} come «{grafia}», signore."}
-    return {"ok": True, "messaggio": f"D'ora in poi pronuncerò {elenco} all'inglese, signore." if inglese
+    return {"ok": True, "messaggio": f"Bene, signore: {elenco} lo dirò sempre così." if inglese
             else f"Lascerò {elenco} all'italiana, signore, e non glielo chiederò più."}
+
+
+async def _domanda_pronuncia(parametri: dict) -> str:
+    return f"Ho detto «{parametri['parole'][0]}» bene, signore?"
 
 
 async def _invia_telegram(parametri: dict) -> dict:
@@ -494,6 +498,7 @@ class Azione:
     domanda: str | Callable[[dict], Awaitable[str]]
     esegui: Callable[[dict], Awaitable[dict]]
     sensibile: bool = False
+    annullata: str = ""  # cosa dire se Pietro risponde di no (se diverso dal solito)
 
 
 AZIONI = {a.nome: a for a in [
@@ -536,6 +541,9 @@ AZIONI = {a.nome: a for a in [
     Azione("aggiorna_chat", "", _aggiorna_chat),
     Azione("ricorda", "", _ricorda),
     Azione("impara_pronuncia", "", _impara_pronuncia),
+    # La chiede Alfred dopo aver detto una parola straniera nuova: con "sì" la conferma.
+    Azione("conferma_pronuncia", _domanda_pronuncia, _impara_pronuncia, sensibile=True,
+           annullata="Come la devo dire, signore? Me la detti pure, anche sillaba per sillaba."),
     Azione("apri", "", _apri),
     Azione("cattura", "", _cattura),
     Azione("chiusura_serale", "", _chiusura_serale),
@@ -620,7 +628,7 @@ class Gestore:
         await self._invia({"tipo": "conferma_chiusa", "id": attesa["id"]})
         if not si:
             return {"ok": True, "azione": attesa["nome"], "annullata": True,
-                    "messaggio": _una("Come non detto, signore.", "Lascio stare, signore.")}
+                    "messaggio": AZIONI[attesa["nome"]].annullata or _una("Come non detto, signore.", "Lascio stare, signore.")}
         return await self._esegui(AZIONI[attesa["nome"]], attesa["parametri"])
 
     def stato_attesa(self) -> dict | None:

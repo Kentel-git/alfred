@@ -90,14 +90,13 @@ anticipo_dirette = 30
 
 # La voce di Alfred. Motore "pocket" (Pocket TTS di Kyutai, predefinito: più naturale,
 # ~800 MB di RAM, vuole PyTorch) o "kokoro" (più leggero, senza PyTorch).
-# Con Pocket le parole straniere si riscrivono come si pronunciano: le più comuni
-# (OBS, YouTube, streaming…) sono già pronte, altre si aggiungono qui o le impara
-# Alfred chiedendole a voce. Con Kokoro si elencano invece in "inglese".
+# Le parole straniere le segna il cervello e la pronuncia si ricava da sola; quando
+# Alfred ne dice una nuova chiede se va bene, e impara la correzione. Qui si possono
+# fissare a mano le grafie (come scriverle perché suonino giuste).
 # [voce]
 # motore = "pocket"
 # voce_pocket = "giovanni"
-# grafie = { "Lore is Magic" = "lòr is mègic", "Skyborne" = "scàibòrn" }
-# inglese = ["Lore is Magic", "Skyborne"]   # solo con motore = "kokoro"
+# grafie = { "Lore is Magic" = "lòr is mègic" }
 
 # Il second brain: un vault Obsidian (metodo PARA) che Alfred legge e in cui scrive.
 # Alfred carica sempre wiki/Alfred/contesto.md, cerca il resto quando serve, annota

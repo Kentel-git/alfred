@@ -37,6 +37,7 @@ impeccabile.
                                         │  │   ├─ agenda               │
                                         │  │   ├─ telegram             │
                                         │  │   ├─ notion               │
+                                        │  │   ├─ vault (Obsidian)     │
                                         │  │   ├─ modalità gioco       │
                                         │  │   └─ obs (WebSocket 4455) │
                                         │  ├─ voice/  STT + TTS        │
@@ -104,6 +105,7 @@ subito).
 | Strumento | Come | Note |
 |---|---|---|
 | Agenda | Da decidere in fase 2: CalDAV/Google Calendar API (libero, portabile) | |
+| Second brain | Vault Obsidian in locale (`alfred/tools/vault.py`), letto e scritto come file Markdown | Contesto sempre caricato; ricerca per parole senza indice; si aggiunge, non si cancella |
 | Notion | API ufficiale con integrazione interna (token in secrets.env), vedi [NOTION.md](NOTION.md) | Vede solo le pagine condivise; riscrivere ed eliminare chiedono conferma |
 | Telegram | Bot API ufficiale (bot personale di Alfred), long polling | Conversazione completa da Telegram; risponde solo alla chat collegata al primo /start |
 | Modalità gioco | Lancia un comando configurabile | Qui: `steam://rungameid/…` di Battle.net, che passa già da `modalita-gioco` |

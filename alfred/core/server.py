@@ -36,7 +36,7 @@ from alfred.core.iniziativa import Iniziativa
 from alfred.core.azioni import agenda_per_hud
 from alfred.core.conversazione import Conversazione
 from alfred.voce import ascolto, parola
-from alfred.tools import agenda, obs
+from alfred.tools import agenda, obs, vault
 
 CARTELLA_PROGETTO = Path(__file__).resolve().parents[2]
 CARTELLA_UI = CARTELLA_PROGETTO / "ui"
@@ -139,6 +139,10 @@ async def _osserva_file() -> None:
     config.CARTELLA_STATO.mkdir(parents=True, exist_ok=True)
     cartelle.append(config.CARTELLA_STATO)  # per le pronunce imparate
     file_pronunce = config.CARTELLA_STATO / parola.FILE_PRONUNCE
+    file_contesto = None
+    if radice := vault.radice():  # solo la cartella di Alfred, non tutto il vault
+        cartelle.append(radice / "wiki" / "Alfred")
+        file_contesto = radice / "wiki" / "Alfred" / "contesto.md"
     async for modifiche in awatch(*cartelle, debounce=300):
         percorsi = [Path(p) for _, p in modifiche]
         if any(p.suffix == ".py" and CARTELLA_CODICE in p.parents for p in percorsi):
@@ -148,7 +152,7 @@ async def _osserva_file() -> None:
             meteo.svuota_cache()
             await diffusore.invia({"tipo": "stato", "dati": _stato()})
             await diffusore.invia(await _meteo())
-        if {config.FILE_CONFIG, FILE_PERSONALITA, FILE_SCHEDA, FILE_MEMORIA, FILE_DIARIO, file_pronunce} & set(percorsi):
+        if {config.FILE_CONFIG, FILE_PERSONALITA, FILE_SCHEDA, FILE_MEMORIA, FILE_DIARIO, file_pronunce, file_contesto} & set(percorsi):
             asyncio.create_task(conversazione.riavvia_cervello())
         modifiche_ui = [p for p in percorsi if CARTELLA_UI in p.parents]
         if modifiche_ui:

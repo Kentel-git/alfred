@@ -135,6 +135,44 @@ async def elimina_evento(id: str, calendario: str = "primary") -> dict:
     return await _azione("elimina_evento", {"id": id, "calendario": calendario})
 
 
+# --- Second brain: il vault Obsidian di Pietro (metodo PARA). Si aggiunge, non si cancella.
+
+@server.tool(annotations=AZIONE)
+async def cattura(testo: str) -> dict:
+    """Annota al volo un'idea, una cosa da fare o da ricordare: una riga in fondo
+    all'Inbox del second brain, da smistare poi con calma."""
+    return await _azione("cattura", {"testo": testo})
+
+
+@server.tool(annotations=SOLA_LETTURA)
+async def cerca_nota(testo: str) -> dict:
+    """Cerca nel second brain (progetti, aree, risorse, diario): restituisce le
+    note più pertinenti con i paragrafi che contengono le parole cercate."""
+    return await _azione("cerca_nota", {"testo": testo})
+
+
+@server.tool(annotations=SOLA_LETTURA)
+async def leggi_nota(nota: str) -> dict:
+    """Legge per intero una nota del second brain (nome come lo dà cerca_nota,
+    es. "Progetti/Alfred")."""
+    return await _azione("leggi_nota", {"nota": nota})
+
+
+@server.tool(annotations=AZIONE)
+async def aggiungi_attivita(nota: str, testo: str, scadenza: str | None = None) -> dict:
+    """Aggiunge un'attività ("- [ ] testo @data") nella sezione Attività della
+    nota di un progetto o di un'area (es. "Alfred", "Lore is Magic").
+    scadenza: "oggi", "domani", un giorno della settimana o AAAA-MM-GG."""
+    return await _azione("aggiungi_attivita", {"nota": nota, "testo": testo, "scadenza": scadenza})
+
+
+@server.tool(annotations=SOLA_LETTURA)
+async def attivita_di_oggi(giorno: str = "oggi") -> dict:
+    """Attività del second brain in scadenza entro quel giorno ("oggi",
+    "domani", AAAA-MM-GG), comprese quelle già scadute."""
+    return await _azione("attivita_di_oggi", {"giorno": giorno})
+
+
 # --- Notion: Alfred vede solo le pagine che Pietro ha condiviso con l'integrazione.
 # Il testo delle pagine è semplice, una riga per blocco: "# titolo", "## sottotitolo",
 # "- punto", "[ ] da fare", "[x] fatto", "> citazione".

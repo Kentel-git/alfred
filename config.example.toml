@@ -92,3 +92,10 @@ anticipo_dirette = 30
 # sono già lette all'inglese; qui se ne aggiungono altre, anche di più parole.
 # [voce]
 # inglese = ["Lore is Magic", "Skyborne"]
+
+# Il second brain: un vault Obsidian (metodo PARA) che Alfred legge e in cui scrive.
+# Alfred carica sempre wiki/Alfred/contesto.md, cerca il resto quando serve, annota
+# in wiki/Inbox.md, aggiunge attività "- [ ] testo @AAAA-MM-GG" e scrive il suo
+# diario nella nota del giorno (wiki/Diario/AAAA-MM-GG.md, sezione "Chiusura serale").
+# [vault]
+# percorso = "~/Documenti/Obsidian"

@@ -24,7 +24,7 @@ from datetime import date, datetime, timedelta
 
 from alfred import brain, config
 from alfred.core import attivita, parole, veglia
-from alfred.tools import agenda, gioco, notion, obs, pc, telegram
+from alfred.tools import agenda, gioco, notion, obs, pc, telegram, vault
 
 log = logging.getLogger("alfred.azioni")
 SCADENZA_CONFERMA_S = 120
@@ -372,6 +372,59 @@ async def _annulla_attivita(p: dict) -> dict:
     return {"ok": True, "messaggio": "Annullato, signore." if n == 1 else f"{n} {cosa} annullati, signore."}
 
 
+# --- Second brain (vault Obsidian) ------------------------------------------------------
+
+def _vault(funzione):
+    """Vault non collegato e note introvabili in un solo punto."""
+    async def esegui(parametri: dict) -> dict:
+        try:
+            return await asyncio.to_thread(funzione, parametri)
+        except vault.VaultNonPronto as errore:
+            return {"ok": False, "messaggio": f"Non posso, signore: {errore}."}
+    return esegui
+
+
+@_vault
+def _cattura(p: dict) -> dict:
+    testo = (p.get("testo") or "").strip()
+    if not testo:
+        return {"ok": False, "messaggio": "Cosa devo annotare, signore?"}
+    vault.cattura(testo)
+    return {"ok": True, "messaggio": _una("Annotato nell'Inbox, signore.", "Messo nell'Inbox, signore.")}
+
+
+@_vault
+def _cerca_nota(p: dict) -> dict:
+    trovate = vault.cerca(p.get("testo") or "")
+    return {"ok": True, "risultati": trovate, "messaggio": f"{len(trovate)} note trovate, signore."
+            if trovate else "Nel second brain non trovo nulla, signore."}
+
+
+@_vault
+def _leggi_nota(p: dict) -> dict:
+    return {"ok": True, **vault.leggi(p.get("nota") or ""), "messaggio": "Letta, signore."}
+
+
+@_vault
+def _aggiungi_attivita(p: dict) -> dict:
+    scadenza = giorno_richiesto(p["scadenza"]) if p.get("scadenza") else None
+    nota = vault.aggiungi_attivita(p.get("nota") or "", p.get("testo") or "", scadenza)
+    quando = f", per {parole.giorno(scadenza)}" if scadenza else ""
+    return {"ok": True, "messaggio": f"Aggiunta in {nota.rsplit('/', 1)[-1]}{quando}, signore."}
+
+
+@_vault
+def _attivita_di_oggi(p: dict) -> dict:
+    giorno = giorno_richiesto(p.get("giorno"))
+    trovate = vault.attivita(fino_a=giorno)
+    if not trovate:
+        return {"ok": True, "attivita": [], "messaggio": f"Nessuna attività in scadenza per {parole.giorno(giorno)}, signore."}
+    scadute = [a for a in trovate if a["scadenza"] < giorno.isoformat()]
+    elenco = "; ".join(f"{a['testo']} ({a['nota'].rsplit('/', 1)[-1]})" for a in trovate[:8])
+    return {"ok": True, "attivita": trovate, "messaggio": f"Per {parole.giorno(giorno)}: {elenco}"
+            + (f". Di queste, {len(scadute)} già scadute." if scadute else ".")}
+
+
 async def _sveglia(accesa: bool) -> dict:
     from alfred.voce import sveglia
 
@@ -451,6 +504,11 @@ AZIONI = {a.nome: a for a in [
     Azione("ricorda", "", _ricorda),
     Azione("impara_pronuncia", "", _impara_pronuncia),
     Azione("apri", "", _apri),
+    Azione("cattura", "", _cattura),
+    Azione("cerca_nota", "", _cerca_nota),
+    Azione("leggi_nota", "", _leggi_nota),
+    Azione("aggiungi_attivita", "", _aggiungi_attivita),
+    Azione("attivita_di_oggi", "", _attivita_di_oggi),
     Azione("volume", "", _volume),
     Azione("riproduzione", "", _riproduzione),
     Azione("timer", "", _timer),

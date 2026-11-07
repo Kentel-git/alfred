@@ -96,6 +96,17 @@ RIPRODUZIONE = [
     (re.compile(r"^(?:prossima|successiva|avanti|salta)(?:\s+(?:canzone|traccia|brano|video))?$|^(?:canzone|traccia|brano)\s+successiv[ao]$"), "avanti"),
     (re.compile(r"^(?:precedente|indietro|torna\s+indietro)(?:\s+(?:canzone|traccia|brano))?$|^(?:canzone|traccia|brano)\s+precedente$"), "indietro"),
 ]
+# Il testo da annotare si prende così com'è (non normalizzato).
+CATTURA = re.compile(
+    r"^\s*(?:alfred[\s,]+)?(?:annota|appunta|segna|segnati|cattura|metti\s+nell?\s*inbox)"
+    r"(?:\s+(?:che|nell?\s*inbox|sull?\s*inbox))?\s*[:,]?\s+(?P<testo>.+)$",
+    re.IGNORECASE | re.DOTALL,
+)
+# "Cosa devo fare oggi?" resta al cervello: può voler dire l'agenda, le attività o entrambe.
+ATTIVITA_OGGI = [re.compile(schema) for schema in (
+    rf"^(?:le\s+)?attivita\s+(?:di|per)\s+{GIORNO}$",
+    rf"^(?:che|quali)\s+attivita\s+ho(?:\s+(?:per\s+)?{GIORNO})?$",
+)]
 APRI = re.compile(r"^(?:apri|avvia|lancia|aprimi|fammi\s+vedere)\s+(?P<cosa>.+)$")
 
 
@@ -143,6 +154,8 @@ def riconosci(testo: str) -> tuple[str, dict] | None:
         return "aggiorna_chat", {"link": m["link"]}
     if m := TELEGRAM.match(testo):
         return "invia_telegram", {"testo": m["testo"].strip()}
+    if (m := CATTURA.match(testo)) and not re.search(r"\b(?:agenda|calendario|telegram|notion)\b", testo, re.I):
+        return "cattura", {"testo": m["testo"].strip()}
     t = normalizza(testo)
     if not t or len(t.split()) > MAX_PAROLE:
         return None
@@ -155,6 +168,10 @@ def riconosci(testo: str) -> tuple[str, dict] | None:
     for schema, azione in COMANDI:
         if schema.match(t):
             return azione, {}
+    for schema in ATTIVITA_OGGI:
+        if m := schema.match(t):
+            giorno = m.groupdict().get("giorno") or "oggi"
+            return "attivita_di_oggi", {"giorno": GIORNI_ACCENTATI.get(giorno, giorno)}
     if comando := _comando_pc(t):  # prima della scena: "metti in pausa" non è una scena
         return comando
     for schema in AGENDA:

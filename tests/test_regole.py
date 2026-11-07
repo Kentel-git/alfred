@@ -36,6 +36,10 @@ def test_comandi_diretti():
         "prossima canzone": "riproduzione",
         "riprendi la registrazione": "riprendi_registrazione",
         "apri un file che non esiste da nessuna parte": None,
+        "Annota: comprare le corde": "cattura",
+        "segna in agenda la riunione di venerdì": None,  # l'agenda non è l'Inbox
+        "quali attività ho domani": "attivita_di_oggi",
+        "Cosa devo fare oggi?": None,  # agenda o attività: decide il cervello
         "metti in standby": "sospendi_computer",
         # Al cervello: troppo lunghe o sfumate per un comando diretto.
         "avvia la diretta tra dieci minuti": None,
@@ -273,6 +277,45 @@ def test_script_dell_hud():
     app = Path(__file__).parent.parent / "ui" / "app.js"
     esito = subprocess.run(["node", "--check", str(app)], capture_output=True, text=True)
     assert esito.returncode == 0, esito.stderr
+
+
+def test_second_brain():
+    import tempfile
+    from datetime import date
+    from pathlib import Path
+
+    from alfred import config
+    from alfred.tools import vault
+
+    with tempfile.TemporaryDirectory() as cartella:
+        wiki = Path(cartella) / "wiki"
+        for d in ("Progetti", "Aree", "Diario", "Modelli", "Alfred"):
+            (wiki / d).mkdir(parents=True)
+        (wiki / "Inbox.md").write_text("---\ntitle: Inbox\n---\n# Inbox\n\n- prima idea\n")
+        (wiki / "Alfred" / "contesto.md").write_text("---\ntitle: x\n---\n# Contesto\n- Vive a Isernia.\n")
+        (wiki / "Modelli" / "Giorno.md").write_text(
+            "---\ntitle: \"{{date}}\"\n---\n# {{date:dddd D MMMM YYYY}}\n\n## Briefing\n- \n\n## Chiusura serale\n- \n")
+        (wiki / "Progetti" / "Alfred.md").write_text(
+            "# Alfred\n\n## Attività\n- [x] fatto\n- [ ] collegare il vault @2026-11-01\n\n## Note\nIl maggiordomo usa Kokoro.\n")
+        (wiki / "Aree" / "Salute.md").write_text("# Salute\n\nCamminare ogni giorno.\n")
+        with mock.patch.object(config, "carica", return_value={"vault": {"percorso": cartella}}):
+            assert vault.contesto() == "# Contesto\n- Vive a Isernia."
+            vault.cattura("comprare  le\ncorde")
+            assert (wiki / "Inbox.md").read_text().endswith("- prima idea\n- comprare le corde\n")
+            vault.aggiungi_attivita("alfred", "provare la dettatura", date(2026, 11, 9))
+            testo = (wiki / "Progetti" / "Alfred.md").read_text()
+            assert "- [ ] collegare il vault @2026-11-01\n- [ ] provare la dettatura @2026-11-09\n\n## Note" in testo
+            vault.aggiungi_attivita("Salute", "visita")  # sezione che non c'è: si crea in fondo
+            assert (wiki / "Aree" / "Salute.md").read_text().endswith("## Attività\n- [ ] visita\n")
+            entro = vault.attivita(fino_a=date(2026, 11, 5))
+            assert [a["testo"] for a in entro] == ["collegare il vault"]  # le altre scadono dopo o senza data
+            assert len(vault.attivita()) == 3
+            assert vault.cerca("kokoro maggiordomo")[0]["nota"] == "Progetti/Alfred"
+            vault.scrivi_diario(date(2026, 11, 7), "Ha collegato il vault.")
+            giorno = (wiki / "Diario" / "2026-11-07.md").read_text()
+            assert "# Sabato 7 novembre 2026" in giorno and "## Chiusura serale\n- Ha collegato il vault.\n" in giorno
+            assert "- \n\n## Chiusura" in giorno  # il segnaposto del Briefing resta a Pietro
+            assert vault.diario_recente(7) == "## 2026-11-07\n- Ha collegato il vault."
 
 
 if __name__ == "__main__":

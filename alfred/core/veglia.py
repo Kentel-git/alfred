@@ -99,6 +99,10 @@ class Veglia:
             self._inibitore = None
 
     def applica(self) -> None:
+        # All'avvio DMS può non rispondere ancora: riprova, e se arriva lascia logind.
+        if not self._usa_dms and _dms("get", CHIAVE_DMS) is not None:
+            self._applica_logind(False)
+            self._usa_dms = True
         if self._usa_dms:
             self._applica_dms(self.voluta)
         else:

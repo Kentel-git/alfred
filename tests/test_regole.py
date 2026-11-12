@@ -178,6 +178,15 @@ def test_link_della_chat():
         ("aggiorna_chat", {"link": "https://youtube.com/live/AbCdEfGhIj1"})
 
 
+def test_chat_basta_una_fonte_della_collezione_aperta():
+    from alfred.core.azioni import _esito_chat
+
+    fonti = ["CHAT YOUTUBE", "CHAT YT"]
+    e = _esito_chat(fonti, [{"_ok": True}, {"_ok": False}])
+    assert e["ok"] and "CHAT YOUTUBE" in e["messaggio"] and "CHAT YT," not in e["messaggio"]
+    assert not _esito_chat(fonti, [{"_ok": False}, {"_ok": False}])["ok"]
+
+
 def test_diario_solo_ultimi_giorni():
     from alfred.brain import _ultimi_giorni
 

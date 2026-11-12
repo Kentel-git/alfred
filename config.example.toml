@@ -68,7 +68,7 @@ porta = 4455
 # Comando per aprire OBS, es. ["obs"] oppure ["flatpak", "run", "com.obsproject.Studio"]
 comando_avvio = ["obs"]
 # Fonti browser che mostrano la chat di YouTube: "chat: <link della diretta>"
-# le aggiorna tutte insieme.
+# aggiorna quelle presenti nella collezione di scene aperta (ne basta una).
 # fonti_chat = ["Chat"]
 
 [agenda]

@@ -126,10 +126,15 @@ async def _aggiorna_chat(parametri: dict) -> dict:
         esiti = [await obs.esegui(cfg, "SetInputSettings", {"inputName": f, "inputSettings": {"url": url}}) for f in fonti]
     except obs.ObsNonRaggiungibile:
         return {"ok": False, "messaggio": "OBS non è aperto, signore. Lo apro?"}
-    mancanti = [f for f, e in zip(fonti, esiti) if not e["_ok"]]
-    if mancanti:
-        return {"ok": False, "messaggio": f"Non trovo in OBS le fonti {', '.join(mancanti)}, signore: la collezione di scene è quella giusta?"}
-    return {"ok": True, "messaggio": f"Chat aggiornata in {_elenco(fonti)}, signore."}
+    return _esito_chat(fonti, esiti)
+
+
+def _esito_chat(fonti: list[str], esiti: list[dict]) -> dict:
+    """Ogni collezione di scene ha le sue fonti della chat: basta che nella collezione aperta ce ne sia almeno una."""
+    aggiornate = [f for f, e in zip(fonti, esiti) if e["_ok"]]
+    if not aggiornate:
+        return {"ok": False, "messaggio": f"Nella collezione aperta non c'è nessuna fonte della chat ({_elenco(fonti)}), signore."}
+    return {"ok": True, "messaggio": f"Chat aggiornata in {_elenco(aggiornate)}, signore."}
 
 
 async def _ricorda(parametri: dict) -> dict:

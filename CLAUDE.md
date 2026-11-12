@@ -28,7 +28,9 @@ leggili prima di lavorare e aggiorna la roadmap quando chiudi un punto.
   passano da una conferma.
 
 ## Sulla macchina di Pietro
-- OBS Flatpak, WebSocket su 4455, collezione "LiM LIVE".
+- OBS Flatpak, WebSocket su 4455; collezioni LOREISMAGIC LIVE/INTERVISTE/YT, REC_YT_SOCIAL, DND WOW LIVE
+  (setup nel repo obs-setup). Ogni collezione ha le sue fonti: `fonti_chat` elenca quelle di tutte,
+  `aggiorna_chat` aggiorna quelle presenti nella collezione aperta.
 - Modalità gioco: lanciare Battle.net da Steam basta, il wrapper
   `~/.local/bin/modalita-gioco` fa il resto. Non modificarlo senza chiedere.
 - `~/.config/niri/config.kdl` è di Pietro: `installa.sh` deve aggiungere un

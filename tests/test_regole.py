@@ -463,6 +463,40 @@ def test_una_conferma_alla_volta():
     asyncio.run(prova())
 
 
+def test_link_e_agenda_dal_cervello_con_conferma():
+    """Dal cervello: link, nuovi eventi e spostamenti chiedono conferma (il testo che
+    legge può essere di altri). Dai comandi diretti restano immediati; le app pure."""
+    import asyncio
+
+    async def invia(_m):
+        pass
+
+    link = "https://esempio.org/una/pagina/lunga?x=1"
+    evento = {"id": "e1", "titolo": "Riunione", "inizio": "2026-11-20T10:00:00+01:00",
+              "fine": "2026-11-20T11:00:00+01:00", "tutto_il_giorno": False}
+
+    async def prova():
+        with mock.patch.object(azioni.pc, "apri") as apri, \
+                mock.patch.object(azioni.agenda, "evento", mock.AsyncMock(return_value=evento)):
+            g = azioni.Gestore(invia)
+            esito = await g.richiedi("apri", {"cosa": link}, dal_cervello=True)
+            assert esito["in_attesa_di_conferma"] and link in g.in_attesa["domanda"]  # link per intero
+            assert not apri.called
+            g.in_attesa = None
+            esito = await g.richiedi("apri", {"cosa": link})  # comando diretto
+            assert esito["ok"] and apri.called and not g.in_attesa
+            with mock.patch.object(azioni.pc, "trova", return_value=("app", "firefox.desktop", "firefox")):
+                for dal_cervello in (True, False):
+                    esito = await g.richiedi("apri", {"cosa": "firefox"}, dal_cervello=dal_cervello)
+                    assert esito["ok"] and not esito.get("in_attesa_di_conferma")
+            esito = await g.richiedi("crea_evento", {"titolo": "Cena", "inizio": "2026-11-20T21:00"}, dal_cervello=True)
+            assert esito["in_attesa_di_conferma"] and "Cena" in g.in_attesa["domanda"]
+            esito = await g.richiedi("sposta_evento", {"id": "e1", "inizio": "2026-11-21T10:00"}, dal_cervello=True)
+            assert esito["in_attesa_di_conferma"] and "Riunione" in g.in_attesa["domanda"]
+
+    asyncio.run(prova())
+
+
 def test_esito_torna_al_canale_della_richiesta():
     """Un messaggio Telegram arrivato a metà non si porta via l'esito di una richiesta a voce."""
     import asyncio

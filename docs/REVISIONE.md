@@ -49,7 +49,7 @@ Ognuna va con il suo test in `tests/test_regole.py` (regola di `CLAUDE.md`).
   chiusura serale). Nessuna conferma è chiusa con `conferma_chiusa` quando viene
   rimpiazzata: l'HUD resta con il vecchio id, che poi non corrisponde più.
 
-- [ ] **2. Il cervello può aprire link e cambiare l'agenda senza conferma.**
+- [x] **2. Il cervello può aprire link e cambiare l'agenda senza conferma.**
   Da verificare prima di correggere: cosa restituiscono al cervello
   `agenda.eventi_di` (descrizioni degli eventi? calendari condivisi da altri?),
   `notion.leggi` e `vault.leggi`. Se vi entra testo scritto da terzi, quel
@@ -426,6 +426,7 @@ il punto a docs/ROADMAP.md e fermati: il codice in una sessione nuova.
   con Kokoro) ma non è in `requirements.txt` né arriva da altri pacchetti:
   su un clone nuovo manca e le domande restano piatte, senza errori. È
   facoltativo (c'è il ripiego su `ImportError`): da decidere se dichiararlo.
+  Fatto (14 novembre): dichiarato in `requirements.txt` come facoltativo.
 - Le conferme non coprono tutto ciò che chiede `CLAUDE.md`: `avvia_registrazione`
   e `ferma_registrazione` partono senza conferma (`alfred/core/azioni.py`).
   `invia_telegram` scrive solo alla chat di Pietro, quindi forse va bene così.

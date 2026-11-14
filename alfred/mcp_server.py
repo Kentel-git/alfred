@@ -115,7 +115,8 @@ async def crea_evento(titolo: str, inizio: str, fine: str | None = None, tutto_i
                       luogo: str | None = None, descrizione: str | None = None) -> dict:
     """Crea un evento nel calendario principale. inizio e fine in ISO 8601
     nell'ora locale (es. 2026-11-07T21:00); per eventi di un giorno intero
-    solo la data e tutto_il_giorno=true. Senza fine dura un'ora."""
+    solo la data e tutto_il_giorno=true. Senza fine dura un'ora.
+    Richiede la conferma di Pietro."""
     return await _azione("crea_evento", {"titolo": titolo, "inizio": inizio, "fine": fine,
                                          "tutto_il_giorno": tutto_il_giorno, "luogo": luogo,
                                          "descrizione": descrizione})
@@ -124,7 +125,8 @@ async def crea_evento(titolo: str, inizio: str, fine: str | None = None, tutto_i
 @server.tool(annotations=AZIONE)
 async def sposta_evento(id: str, inizio: str, fine: str | None = None, calendario: str = "primary") -> dict:
     """Sposta un evento (id e calendario da agenda_eventi) al nuovo inizio in
-    ISO 8601, ora locale. Senza fine mantiene la durata."""
+    ISO 8601, ora locale. Senza fine mantiene la durata.
+    Richiede la conferma di Pietro."""
     return await _azione("sposta_evento", {"id": id, "inizio": inizio, "fine": fine, "calendario": calendario})
 
 
@@ -286,7 +288,8 @@ async def aggiorna_chat(link: str) -> dict:
 @server.tool(annotations=AZIONE)
 async def apri(cosa: str) -> dict:
     """Apre un'app (per nome: "firefox", "kdenlive", "calcolatrice"), una
-    cartella ("documenti", "scaricati", "cartella progetti") o un link."""
+    cartella ("documenti", "scaricati", "cartella progetti") o un link.
+    I link richiedono la conferma di Pietro."""
     return await _azione("apri", {"cosa": cosa})
 
 

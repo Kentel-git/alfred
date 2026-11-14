@@ -289,7 +289,7 @@ async def eventi_agenda(da: str, a: str, calendari: str = ""):
 @app.post("/api/azioni/{nome}")
 async def azione(nome: str, parametri: dict | None = None):
     """Usato dal cervello (strumenti MCP): le azioni sensibili restano in attesa di conferma."""
-    return await conversazione.azioni.richiedi(nome, parametri or {})
+    return await conversazione.azioni.richiedi(nome, parametri or {}, dal_cervello=True)
 
 
 @app.post("/api/ascolta")

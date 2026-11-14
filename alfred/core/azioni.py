@@ -576,6 +576,31 @@ AZIONI = {a.nome: a for a in [
 ]}
 
 
+async def _domanda_link(p: dict) -> str | None:
+    trovato = pc.trova((p.get("cosa") or "").strip())
+    return f"Apro questo link, signore? {trovato[1]}" if trovato and trovato[0] == "link" else None
+
+
+async def _domanda_crea_evento(p: dict) -> str:
+    quando = parole.quando({"inizio": p["inizio"], "tutto_il_giorno": bool(p.get("tutto_il_giorno"))})
+    return f"Segno «{p['titolo']}» per {quando}, signore?"
+
+
+async def _domanda_sposta_evento(p: dict) -> str:
+    e = await agenda.evento(p["id"], p.get("calendario") or "primary")
+    nuovo = parole.quando({"inizio": p["inizio"], "tutto_il_giorno": e["tutto_il_giorno"]})
+    return f"Sposto «{e['titolo']}» da {parole.quando(e)} a {nuovo}, signore?"
+
+
+# Chieste dal cervello, queste chiedono conferma: il testo che legge (eventi, note,
+# pagine) può essere scritto da altri. Dai comandi diretti e dall'HUD restano immediate.
+# La domanda None vuol dire che non c'è niente da confermare.
+DOMANDE_DAL_CERVELLO = {
+    "apri": _domanda_link,
+    "crea_evento": _domanda_crea_evento,
+    "sposta_evento": _domanda_sposta_evento,
+}
+
 # Domande che Alfred fa da sé: non scavalcano una conferma già in sospeso.
 PROPOSTE_DI_INIZIATIVA = {"conferma_pronuncia", "proponi_chiusura", "proponi_revisione"}
 
@@ -592,25 +617,31 @@ class Gestore:
             self.in_attesa = None
         return self.in_attesa
 
-    async def richiedi(self, nome: str, parametri: dict | None = None, origine: str | None = None) -> dict:
-        """Chiede un'azione. Le sensibili restano in attesa di conferma."""
+    async def richiedi(self, nome: str, parametri: dict | None = None, origine: str | None = None,
+                       dal_cervello: bool = False) -> dict:
+        """Chiede un'azione. Le sensibili restano in attesa di conferma; dal_cervello:
+        anche quelle di DOMANDE_DAL_CERVELLO."""
         azione = AZIONI.get(nome)
         if not azione:
             return {"ok": False, "messaggio": f"Non conosco l'azione «{nome}», signore."}
         parametri = parametri or {}
-        precedente = self._attesa_valida() if azione.sensibile else None
+        domanda_del_cervello = DOMANDE_DAL_CERVELLO.get(nome) if dal_cervello else None
+        sensibile = azione.sensibile or domanda_del_cervello is not None
+        precedente = self._attesa_valida() if sensibile else None
         if precedente and nome in PROPOSTE_DI_INIZIATIVA:
             # Il «sì» deve andare alla domanda a cui crede di rispondere: si riproverà dopo.
             return {"ok": False, "azione": nome, "rimandata": True, "messaggio": "C'è già una domanda in sospeso."}
-        if azione.sensibile:
-            if isinstance(azione.domanda, str):
+        if sensibile:
+            if isinstance(azione.domanda, str) and not domanda_del_cervello:
                 domanda = azione.domanda
             else:
                 try:
-                    domanda = await azione.domanda(parametri)
+                    domanda = await (domanda_del_cervello or azione.domanda)(parametri)
                 except Exception as errore:
                     log.warning("conferma di %s non preparata: %s", nome, errore)
                     return {"ok": False, "azione": nome, "messaggio": f"Non riesco a trovare ciò che mi chiede, signore: {errore}."}
+            if domanda is None:  # es. apri con un'app: niente da confermare
+                return await self._esegui(azione, parametri, origine)
             if precedente:
                 await self._invia({"tipo": "conferma_chiusa", "id": precedente["id"]})
                 domanda_vecchia = precedente["domanda"]

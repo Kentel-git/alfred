@@ -285,15 +285,17 @@ Non aggiungere CI né file di blocco: ne parliamo dopo.
 Compito: punto 2 di «Correzioni al codice». Leggi la riga «Verifica:» sotto
 quel punto e la mia decisione in «Domande aperte».
 Comportamento voluto: quando la richiesta arriva dal cervello
-(/api/azioni/{nome}), apri con un link chiede conferma; da comando diretto e
-dai pulsanti dell'HUD resta immediato. [Aggiungi qui sposta_evento e
-crea_evento se ho deciso di sì.]
+(/api/azioni/{nome}), apri con un link, sposta_evento e crea_evento
+chiedono conferma; da comando diretto e dai pulsanti dell'HUD restano
+immediati.
 Prima di scrivere, dimmi come distingui le tre strade nel codice attuale e
 proponi la modifica più piccola. La conferma deve mostrare il link per
-intero.
+intero; per gli eventi, titolo e orario (per sposta_evento quello vecchio e
+quello nuovo).
 Test: apri con link dalla strada del cervello → in attesa di conferma;
 dalla strada dei comandi diretti → eseguito; apri con un'app → eseguito
-da entrambe.
+da entrambe; sposta_evento e crea_evento dalla strada del cervello → in
+attesa di conferma.
 ```
 
 ### 7. Memoria (punto 5) — dopo la mia risposta
@@ -327,5 +329,6 @@ il punto a docs/ROADMAP.md e fermati: il codice in una sessione nuova.
 
 - Punto 2: `sposta_evento` e `crea_evento` chiesti dal cervello devono
   chiedere conferma, o basta `apri` con i link?
+  Decisione (14 novembre): sì, anche `sposta_evento` e `crea_evento`.
 - Punto 5: tetto alla memoria o consolidazione nel vault?
 - Quale ampliamento per primo?

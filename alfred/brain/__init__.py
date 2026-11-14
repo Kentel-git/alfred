@@ -13,6 +13,7 @@ FILE_SCHEDA = config.CARTELLA_CONFIG / "su-di-me.md"
 FILE_MEMORIA = config.CARTELLA_CONFIG / "memoria.md"
 FILE_DIARIO = config.CARTELLA_CONFIG / "diario.md"
 GIORNI_DI_DIARIO = 7  # quanti giorni del diario entrano nel prompt
+RIGHE_DI_MEMORIA = 30  # quante righe di memoria.md (le più recenti) entrano nel prompt
 
 
 def ricorda(fatto: str) -> None:
@@ -64,7 +65,11 @@ def personalita(appellativo: str) -> str:
                   "Il suo vault Obsidian: questo è il contesto che carichi sempre; il resto lo cerchi "
                   f"con cerca_nota quando serve.\n\n{contesto}\n")
     if FILE_MEMORIA.exists():
-        testo += f"\n\n## Ciò che hai imparato da solo\n{FILE_MEMORIA.read_text().strip()}\n"
+        # Il file resta intero per Pietro; nel prompt solo le righe più recenti, senza titoli.
+        righe = [r for r in FILE_MEMORIA.read_text().splitlines() if r.strip() and not r.startswith("#")]
+        if righe:
+            memoria = "\n".join(righe[-RIGHE_DI_MEMORIA:])
+            testo += f"\n\n## Ciò che hai imparato da solo\n{memoria}\n"
     if diario := _diario_recente():
         testo += f"\n\n## Il tuo diario dei giorni scorsi\n{diario}\n"
     return testo

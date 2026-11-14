@@ -18,6 +18,7 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 
 from alfred.brain import personalita
+from alfred.core import compiti
 
 log = logging.getLogger("alfred.cervello")
 
@@ -96,7 +97,7 @@ class CervelloClaude:
             stderr=asyncio.subprocess.PIPE,
             limit=16 * 1024 * 1024,
         )
-        asyncio.create_task(self._leggi_errori(self._processo))
+        compiti.lancia(self._leggi_errori(self._processo))
         log.info("cervello avviato (%s, sessione %s)", self.modello, self.sessione or "nuova")
 
     @staticmethod

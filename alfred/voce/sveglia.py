@@ -23,6 +23,7 @@ from pathlib import Path
 import numpy as np
 
 from alfred import config
+from alfred.core import compiti
 from alfred.voce import ascolto
 
 log = logging.getLogger("alfred.sveglia")
@@ -130,7 +131,7 @@ class Sveglia:
                         riconoscitore.reset_stream(flusso)
                 if scattata:
                     log.info("forse ho sentito il mio nome: verifico")
-                    asyncio.create_task(ascolto.prepara())  # se il modello grande riposa, si sveglia ora
+                    compiti.lancia(ascolto.prepara())  # se il modello grande riposa, si sveglia ora
                     if self._quando_forse:
                         self._quando_forse()
                     gia_sentito = np.concatenate(precedente)

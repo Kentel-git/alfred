@@ -59,3 +59,13 @@ Ogni fase produce qualcosa di usabile da sola.
 - [x] conferma istantanea: se il cervello non risponde entro un secondo, Alfred dice "Subito, signore." (ordini) o "Un istante, signore." (domande), frasi già sintetizzate all'avvio
 - [ ] suoni originali (avvio, conferme)
 - [ ] cervello locale alternativo (Ollama)
+
+Ampliamenti approvati il 14 novembre, in quest'ordine (progetto in
+[REVISIONE.md](REVISIONE.md), «Progetto degli ampliamenti»):
+- [ ] riquadro «Comandi» nell'HUD, ricavato da `comandi.py` (senza modello)
+- [ ] memoria visibile e cancellabile: «cosa ricordi», «dimentica …» con conferma, riquadro nell'HUD (senza modello)
+- [ ] posta Gmail in sola lettura nel briefing: non letti e mittenti (senza modello)
+- [ ] ricerca sul web in sola lettura, con il modello leggero dell'economo; spenta in austerità
+- [ ] cervello locale con strumenti come scorta in austerità (chiude «cervello locale alternativo»)
+- [ ] missioni Claude Code: «Alfred, lavora su X» in un worktree, con conferma e tetto
+- [ ] fine del turno e cancellazione dell'eco (vedi Fase 3)

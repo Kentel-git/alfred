@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from alfred import brain, config
-from alfred.core import attivita, parole, routine, veglia
+from alfred.core import attivita, compiti, parole, routine, veglia
 from alfred.tools import agenda, gioco, notion, obs, pc, telegram, vault
 
 log = logging.getLogger("alfred.azioni")
@@ -479,7 +479,7 @@ async def _sveglia(accesa: bool) -> dict:
 
 
 async def _sospendi(_parametri: dict) -> dict:
-    asyncio.create_task(veglia.istanza().sospendi_ora())
+    compiti.lancia(veglia.istanza().sospendi_ora())
     return {"ok": True, "messaggio": "Buonanotte, signore. Spengo le luci."}
 
 
@@ -592,7 +592,7 @@ class Gestore:
             self.in_attesa = None
         return self.in_attesa
 
-    async def richiedi(self, nome: str, parametri: dict | None = None) -> dict:
+    async def richiedi(self, nome: str, parametri: dict | None = None, origine: str | None = None) -> dict:
         """Chiede un'azione. Le sensibili restano in attesa di conferma."""
         azione = AZIONI.get(nome)
         if not azione:
@@ -618,13 +618,13 @@ class Gestore:
                 "id": uuid.uuid4().hex[:8], "nome": nome, "parametri": parametri,
                 "domanda": domanda, "scadenza": time.time() + SCADENZA_CONFERMA_S,
             }
-            await self._invia({"tipo": "conferma", "id": self.in_attesa["id"], "domanda": domanda})
+            await self._invia({"tipo": "conferma", "id": self.in_attesa["id"], "domanda": domanda, "origine": origine})
             if precedente:
                 domanda = f"Lascio cadere la domanda di prima («{domanda_vecchia}»). {domanda}"
             return {"ok": True, "azione": nome, "in_attesa_di_conferma": True, "messaggio": domanda}
-        return await self._esegui(azione, parametri)
+        return await self._esegui(azione, parametri, origine)
 
-    async def _esegui(self, azione: Azione, parametri: dict) -> dict:
+    async def _esegui(self, azione: Azione, parametri: dict, origine: str | None = None) -> dict:
         try:
             esito = await azione.esegui(parametri)
         except Exception as errore:
@@ -632,12 +632,12 @@ class Gestore:
             esito = {"ok": False, "messaggio": f"Qualcosa è andato storto, signore: {errore}."}
         esito["azione"] = azione.nome
         if poi := esito.pop("poi", None):  # un'azione che ne propone un'altra (resta in attesa del sì)
-            await self.richiedi(poi)
+            await self.richiedi(poi, origine=origine)
         if esito.get("ok") and azione.nome in ("crea_evento", "sposta_evento", "elimina_evento"):
             await self._invia(await agenda_per_hud())  # l'HUD si aggiorna subito
         return esito
 
-    async def conferma(self, si: bool, id_attesa: str | None = None) -> dict | None:
+    async def conferma(self, si: bool, id_attesa: str | None = None, origine: str | None = None) -> dict | None:
         """Risposta alla richiesta in attesa. None se non c'era nulla da confermare."""
         attesa = self._attesa_valida()
         if not attesa or (id_attesa and id_attesa != attesa["id"]):
@@ -647,7 +647,7 @@ class Gestore:
         if not si:
             return {"ok": True, "azione": attesa["nome"], "annullata": True,
                     "messaggio": AZIONI[attesa["nome"]].annullata or _una("Come non detto, signore.", "Lascio stare, signore.")}
-        return await self._esegui(AZIONI[attesa["nome"]], attesa["parametri"])
+        return await self._esegui(AZIONI[attesa["nome"]], attesa["parametri"], origine)
 
     def stato_attesa(self) -> dict | None:
         attesa = self._attesa_valida()

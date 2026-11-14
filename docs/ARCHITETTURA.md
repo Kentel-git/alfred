@@ -19,7 +19,7 @@ impeccabile.
    `127.0.0.1`/`localhost` e, dai browser, solo l'Origin del proprio HUD: una
    pagina web qualunque non può leggerlo né comandarlo.
 5. **Azioni sensibili confermate.** Inviare messaggi, avviare/fermare live:
-   Alfred chiede conferma (configurabile per azione).
+   Alfred chiede conferma (`sensibile=True` in `alfred/core/azioni.py`).
 
 ## Componenti
 
@@ -40,7 +40,7 @@ impeccabile.
                                         │  │   ├─ vault (Obsidian)     │
                                         │  │   ├─ modalità gioco       │
                                         │  │   └─ obs (WebSocket 4455) │
-                                        │  ├─ voice/  STT + TTS        │
+                                        │  ├─ voce/   STT + TTS        │
                                         │  └─ widget  dati HUD         │
                                         └──────────────────────────────┘
                                                      ▲
@@ -60,18 +60,20 @@ impeccabile.
   con `Cache-Control: no-cache`). Stile "ologramma da laboratorio": il nucleo ad
   anelli segue lo stato di Alfred, con colori sfumati (`@property`) e velocità
   con inerzia. Font liberi in `ui/fonts` (Rajdhani, JetBrains Mono: SIL OFL).
-- **brain/**: interfaccia comune `rispondi(messaggi) → flusso di testo +
-  chiamate a strumenti`. L'adattatore `claude` lancia `claude -p` con la
-  personalità in `--append-system-prompt`, `--output-format stream-json` e
-  `--resume` per mantenere il filo della conversazione.
+- **brain/**: interfaccia comune `chiedi(testo, modello) → flusso di eventi`
+  (testo parola per parola, chiamate a strumenti, fine). L'adattatore `claude`
+  tiene acceso un solo processo `claude -p` in stream-json, con la personalità
+  in `--system-prompt`, nessuno strumento proprio (`--tools ""`) oltre a quelli
+  MCP di Alfred, e `--resume` per mantenere il filo della conversazione.
 - **tools/**: ogni azione è una funzione Python documentata, esposta a
   `claude -p` come **server MCP**. Gli stessi strumenti saranno usabili da un
   cervello locale.
 - **voce/**: ascolto (pw-record, fine frase con Silero VAD, trascrizione
   faster-whisper "small" sulla CPU: la GPU resta libera per giochi e dirette)
-  e sintesi vocale (Kokoro, miscela di voci; intonazione delle domande con
-  WORLD). Sveglia sul nome "Alfred" in due stadi: riconoscitore di parole
-  chiave sherpa-onnx sempre attivo e permissivo, poi verifica della frase con
+  e sintesi vocale (predefinita Pocket TTS con la voce italiana "giovanni";
+  in alternativa Kokoro, più leggero, con le domande intonate da WORLD).
+  Sveglia sul nome "Alfred" in due stadi: riconoscitore di parole chiave
+  sherpa-onnx sempre attivo e permissivo, poi verifica della frase con
   Whisper. Tutto in locale, zero riserve.
 
 ## Canale HUD ↔ core
@@ -100,16 +102,17 @@ strada dei comandi diretti), `conferma_azione`, `ascolta`,
 `nuova_conversazione` e `aggiornami` (finestra appena richiamata: dati freschi
 subito).
 
-## Strumenti previsti
+## Strumenti
 
 | Strumento | Come | Note |
 |---|---|---|
-| Agenda | Da decidere in fase 2: CalDAV/Google Calendar API (libero, portabile) | |
+| Agenda | Google Calendar API diretta (`alfred/tools/agenda.py`), vedi [AGENDA.md](AGENDA.md) | Lettura a costo zero; eliminare chiede conferma |
 | Second brain | Vault Obsidian in locale (`alfred/tools/vault.py`), letto e scritto come file Markdown | Contesto sempre caricato; ricerca per parole senza indice; si aggiunge, non si cancella |
 | Notion | API ufficiale con integrazione interna (token in secrets.env), vedi [NOTION.md](NOTION.md) | Vede solo le pagine condivise; riscrivere ed eliminare chiedono conferma |
 | Telegram | Bot API ufficiale (bot personale di Alfred), long polling | Conversazione completa da Telegram; risponde solo alla chat collegata al primo /start |
 | Modalità gioco | Lancia un comando configurabile | Qui: `steam://rungameid/…` di Battle.net, che passa già da `modalita-gioco` |
 | OBS | obs-websocket v5 (porta 4455) | Scene, avvio/stop live e registrazione, stato |
+| Controllo del PC | `alfred/tools/pc.py`: app, cartelle e link, volume, playerctl, dettatura (wtype) | A costo zero; standby su richiesta con conferma |
 
 ## Economia delle risorse
 

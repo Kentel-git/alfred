@@ -30,8 +30,8 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from watchfiles import awatch
 
 from alfred import __version__, config
-from alfred.brain import FILE_DIARIO, FILE_MEMORIA, FILE_PERSONALITA, FILE_SCHEDA
-from alfred.core import attivita, limiti, meteo, sistema, telegram_ponte, veglia
+from alfred.brain import FILE_PERSONALITA, FILE_SCHEDA
+from alfred.core import attivita, compiti, limiti, meteo, sistema, telegram_ponte, veglia
 from alfred.core.iniziativa import Iniziativa
 from alfred.core.azioni import agenda_per_hud
 from alfred.core.conversazione import Conversazione
@@ -136,9 +136,6 @@ async def _osserva_file() -> None:
     cartelle = [CARTELLA_UI, CARTELLA_CODICE]
     if config.CARTELLA_CONFIG.is_dir():
         cartelle.append(config.CARTELLA_CONFIG)
-    config.CARTELLA_STATO.mkdir(parents=True, exist_ok=True)
-    cartelle.append(config.CARTELLA_STATO)  # per le pronunce imparate
-    file_pronunce = config.CARTELLA_STATO / parola.FILE_PRONUNCE
     file_contesto = None
     if radice := vault.radice():  # solo la cartella di Alfred, non tutto il vault
         cartelle.append(radice / "wiki" / "Alfred")
@@ -152,8 +149,9 @@ async def _osserva_file() -> None:
             meteo.svuota_cache()
             await diffusore.invia({"tipo": "stato", "dati": _stato()})
             await diffusore.invia(await _meteo())
-        if {config.FILE_CONFIG, FILE_PERSONALITA, FILE_SCHEDA, FILE_MEMORIA, FILE_DIARIO, file_pronunce, file_contesto} & set(percorsi):
-            asyncio.create_task(conversazione.riavvia_cervello())
+        # Memoria, diario e pronunce no: il prompt li rilegge alla conversazione nuova del mattino.
+        if {config.FILE_CONFIG, FILE_PERSONALITA, FILE_SCHEDA, file_contesto} & set(percorsi):
+            compiti.lancia(conversazione.riavvia_cervello())
         modifiche_ui = [p for p in percorsi if CARTELLA_UI in p.parents]
         if modifiche_ui:
             solo_stile = all(p.suffix == ".css" for p in modifiche_ui)
@@ -239,7 +237,7 @@ async def canale(ws: WebSocket):
                     await diffusore.invia({"tipo": "sistema", "dati": sistema.leggi()}, solo=ws)
                     await diffusore.invia(await _meteo(), solo=ws)
                     if limiti.eta_s() > LIMITI_VECCHI_S:
-                        asyncio.create_task(_aggiorna_limiti())
+                        compiti.lancia(_aggiorna_limiti())
                 case "chat":
                     await conversazione.ricevi(str(messaggio.get("testo", "")))
                 case "nuova_conversazione":

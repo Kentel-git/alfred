@@ -4,6 +4,7 @@ Si lancia con `pytest` oppure, senza dipendenze, con:
     .venv/bin/python -m tests.test_regole
 """
 
+import contextlib
 import time
 from datetime import date, timedelta
 from unittest import mock
@@ -195,6 +196,24 @@ def test_diario_solo_ultimi_giorni():
     assert ultimi.count("## ") == 7 and "Giorno 10." in ultimi and "Giorno 3." not in ultimi
 
 
+def test_memoria_nel_prompt_solo_le_ultime_righe():
+    import tempfile
+    from pathlib import Path
+
+    from alfred import brain
+
+    with tempfile.TemporaryDirectory() as cartella:
+        memoria = Path(cartella) / "memoria.md"
+        memoria.write_text("# Ciò che Alfred ha imparato\n\n" + "".join(f"- fatto {n}\n" for n in range(1, 41)))
+        with mock.patch.object(brain, "FILE_MEMORIA", memoria), \
+                mock.patch.object(brain, "FILE_SCHEDA", memoria.with_name("assente.md")), \
+                mock.patch.object(brain, "_diario_recente", return_value=""), \
+                mock.patch("alfred.tools.vault.contesto", return_value=""):
+            prompt = brain.personalita("signore")
+    assert "- fatto 40\n" in prompt and "- fatto 11\n" in prompt
+    assert "- fatto 10\n" not in prompt and "# Ciò che Alfred" not in prompt
+
+
 def test_cervello_gratuito_spento_o_assente():
     # None = si torna al comportamento senza cervello gratuito (risposta fissa, diario con Claude).
     import asyncio
@@ -266,6 +285,23 @@ def test_impara_pronuncia():
         assert parola.per_pocket("‹Skyborne›") == "scàibòrn"
         assert parola.impara(["Andarun"], False) == ["Andarun"]
         assert parola.per_pocket("‹Andarun›") == "Andarun" and parola.parole_nuove("‹andarun›") == []
+
+
+def test_stato_scritto_per_intero():
+    import tempfile
+    from pathlib import Path
+
+    from alfred import config
+
+    with tempfile.TemporaryDirectory() as cartella, mock.patch.object(config, "CARTELLA_STATO", Path(cartella)):
+        config.salva_stato("prova.json", a=1)
+        config.salva_stato("prova.json", b=2)
+        assert config.leggi_stato("prova.json") == {"a": 1, "b": 2}
+        assert [f.name for f in Path(cartella).iterdir()] == ["prova.json"]  # niente .tmp avanzati
+        # Scrittura interrotta prima del replace: il file di prima resta intatto.
+        with mock.patch.object(Path, "replace", side_effect=OSError), contextlib.suppress(OSError):
+            config.salva_stato("prova.json", a=99)
+        assert config.leggi_stato("prova.json") == {"a": 1, "b": 2}
 
 
 def test_attivita():
@@ -423,6 +459,72 @@ def test_una_conferma_alla_volta():
         assert {"tipo": "conferma_chiusa", "id": a["id"]} in inviati  # A chiusa
         assert "Lascio cadere" in esito["messaggio"] and a["domanda"] in esito["messaggio"]
         assert g.in_attesa["domanda"] == azioni.AZIONI["ferma_diretta"].domanda  # sull'HUD solo la domanda nuova
+
+    asyncio.run(prova())
+
+
+def test_esito_torna_al_canale_della_richiesta():
+    """Un messaggio Telegram arrivato a metà non si porta via l'esito di una richiesta a voce."""
+    import asyncio
+
+    from alfred.core import conversazione
+
+    a_telegram = []
+
+    class Azioni:
+        stato_attesa = staticmethod(lambda: None)
+
+        async def richiedi(self, nome, parametri, origine=None):
+            if nome == "lenta":
+                await self.sbloccata.wait()
+            return {"ok": True, "azione": nome, "messaggio": f"fatto {nome}"}
+
+    async def invia(m):
+        pass
+
+    async def registra(testo, conferma_id=None, vocale=False, silenzioso=False):
+        a_telegram.append(testo)
+
+    async def prova():
+        c = conversazione.Conversazione.__new__(conversazione.Conversazione)
+        c._invia, c.messaggi, c._da_riferire, c._turni = invia, [], [], []
+        c._salva, c._parla = lambda: None, lambda: None
+        c.azioni = Azioni()
+        c.azioni.sbloccata = asyncio.Event()
+        comando = {"a voce": ("lenta", {}), "da telegram": ("rapida", {})}
+        with mock.patch.object(conversazione.comandi, "riconosci", comando.get), \
+                mock.patch.object(conversazione, "_a_telegram", registra):
+            prima = asyncio.create_task(c.ricevi("a voce", origine="voce"))
+            await asyncio.sleep(0)
+            await c.ricevi("da telegram", origine="telegram")
+            c.azioni.sbloccata.set()
+            await prima
+        assert a_telegram == ["fatto rapida"]
+        # Conferma chiesta dal cervello (MCP, senza origine): vale il turno attivo.
+        c._turni = ["voce", "telegram"]
+        with mock.patch.object(conversazione, "_a_telegram", registra):
+            await c._invia_da_azioni({"tipo": "conferma", "id": "x", "domanda": "Procedo?", "origine": None})
+        assert a_telegram == ["fatto rapida"] and c.stato()["occupato"]
+
+    asyncio.run(prova())
+
+
+def test_compito_che_fallisce():
+    """Un compito lanciato e dimenticato resta vivo finché gira; se fallisce, finisce nel log."""
+    import asyncio
+
+    from alfred.core import compiti
+
+    async def guasto():
+        raise RuntimeError("guasto")
+
+    async def prova():
+        with mock.patch.object(compiti.log, "error") as errore:
+            compito = compiti.lancia(guasto())
+            assert compito in compiti._vivi
+            await asyncio.sleep(0.01)
+        assert compito not in compiti._vivi
+        assert isinstance(errore.call_args.kwargs["exc_info"], RuntimeError)
 
     asyncio.run(prova())
 

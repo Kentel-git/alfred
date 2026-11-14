@@ -44,7 +44,9 @@ def leggi_stato(nome: str) -> dict:
 def salva_stato(nome: str, **valori) -> None:
     """Aggiorna le chiavi indicate, lasciando le altre come sono."""
     CARTELLA_STATO.mkdir(parents=True, exist_ok=True)
-    (CARTELLA_STATO / nome).write_text(json.dumps(leggi_stato(nome) | valori))
+    temporaneo = (CARTELLA_STATO / nome).with_suffix(".tmp")
+    temporaneo.write_text(json.dumps(leggi_stato(nome) | valori))
+    temporaneo.replace(CARTELLA_STATO / nome)
 
 
 def segreto(nome: str) -> str | None:

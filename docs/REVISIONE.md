@@ -78,7 +78,7 @@ Ognuna va con il suo test in `tests/test_regole.py` (regola di `CLAUDE.md`).
   (`conversazione.py:169`) e l'HUD (`:381`) chiamano `richiedi` senza
   passare di lì, quindi le tre strade si distinguono già.
 
-- [ ] **3. Origine della richiesta come stato condiviso.**
+- [x] **3. Origine della richiesta come stato condiviso.**
   In `alfred/core/conversazione.py` `self._origine`, `self._vocale_telegram` e
   `self.occupato` appartengono all'istanza. `_rispondi` copia l'origine
   all'inizio, ma `annuncia`, `_invia_da_azioni` e le conferme leggono il valore
@@ -99,7 +99,7 @@ Ognuna va con il suo test in `tests/test_regole.py` (regola di `CLAUDE.md`).
   basta su quella strada: serve l'origine del turno in corso (i turni del
   cervello sono già in fila dietro `CervelloClaude._turno`).
 
-- [ ] **4. `asyncio.create_task` senza riferimento (32 punti).**
+- [x] **4. `asyncio.create_task` senza riferimento (32 punti).**
   Il ciclo degli eventi tiene solo riferimenti deboli ai compiti: uno non
   referenziato può essere raccolto prima di finire, senza errori. Correzione
   minima: una funzione in un solo posto (per esempio `alfred/core/compiti.py`)
@@ -114,7 +114,7 @@ Ognuna va con il suo test in `tests/test_regole.py` (regola di `CLAUDE.md`).
   `claude.py:99`; `conversazione.py:160`, `:173`, `:206`, `:225`, `:242`,
   `:252`, `:411`, `:490`; `azioni.py:482`; `sveglia.py:133`.
 
-- [ ] **5. La memoria cresce e ogni «ricordati che…» riavvia il cervello.**
+- [x] **5. La memoria cresce e ogni «ricordati che…» riavvia il cervello.**
   `brain.personalita` mette tutto `memoria.md` nel prompt di sistema;
   `_osserva_file` (`server.py`, riga 155) riavvia il cervello a ogni modifica
   di `memoria.md`, `diario.md`, pronunce e contesto del vault, e la cache del
@@ -130,7 +130,7 @@ Ognuna va con il suo test in `tests/test_regole.py` (regola di `CLAUDE.md`).
   memoria vuota. Il diario va nelle note del giorno del vault, che non sono
   osservate.
 
-- [ ] **6. Scritture di stato non atomiche.**
+- [x] **6. Scritture di stato non atomiche.**
   `config.salva_stato` scrive direttamente sul file; `Conversazione._salva`
   usa già file temporaneo e `replace`. Usare lo stesso schema in `salva_stato`.
   Verifica: confermato. `alfred/config.py:47` usa `write_text` diretto;
@@ -138,14 +138,15 @@ Ognuna va con il suo test in `tests/test_regole.py` (regola di `CLAUDE.md`).
 
 ## Documentazione e flusso di lavoro
 
-- [ ] `README.md`: «Stato: fase 0» in entrambe le lingue, con le fasi 0–4
+- [x] `README.md`: «Stato: fase 0» in entrambe le lingue, con le fasi 0–4
   chiuse in `docs/ROADMAP.md`.
-- [ ] `docs/ARCHITETTURA.md`: nello schema `voice/` (è `voce/`); in «Strumenti
+- [x] `docs/ARCHITETTURA.md`: nello schema `voice/` (è `voce/`); in «Strumenti
   previsti» l'agenda è «da decidere in fase 2» (è Google Calendar, fatta);
   la voce descritta è Kokoro (la predefinita è Pocket TTS).
-- [ ] `requirements.txt`: dichiarare `websockets`, `watchfiles` e `numpy`,
+- [x] `requirements.txt`: dichiarare `websockets`, `watchfiles` e `numpy`,
   importati direttamente ma installati solo per via indiretta; aggiungere un
   file di blocco (`pip freeze`) per installazioni riproducibili.
+  Fatto: dipendenze dichiarate. File di blocco rimandato, insieme alla CI.
 - [ ] CI: una GitHub Action che esegue `python -m tests.test_regole` a ogni
   push. I test importano `alfred.voce` e `alfred.core.server`, quindi oggi
   serve l'installazione completa: verificare quanto pesa, altrimenti separare
@@ -167,11 +168,88 @@ In ordine di resa; nessuno è deciso. Ognuno deve dichiarare quale modello usa
 2. **Missioni Claude Code.** «Alfred, lavora su X»: una sessione `claude` nella
    cartella del progetto, con aggiornamenti a voce e l'esito nel riquadro
    Attività. Azione sensibile; consuma riserve, quindi passa dall'economo.
-3. **Ricerca sul web** come strumento in sola lettura.
+3. **Ricerca sul web** come strumento in sola lettura. Oggi il cervello gira
+   senza strumenti propri (`--tools ""` in `alfred/brain/claude.py`): la via
+   più corta è concedergli la ricerca nativa di Claude, senza servizi nuovi né
+   chiavi (niente Tavily: non è libero). Da verificare: quanto costa in
+   riserve e come passa dall'economo; in austerità resta spenta. Il testo
+   delle pagine è scritto da terzi: vale quanto deciso per il punto 2 delle
+   correzioni.
 4. **Fine del turno e cancellazione dell'eco** (già in roadmap): interrompere
    Alfred senza dire il suo nome, non tagliare chi fa pause.
 5. **Posta in sola lettura** nel briefing del mattino, a costo zero se basta
    contare e citare i mittenti.
+6. **Memoria visibile e cancellabile.** Alfred ha «ricordati che…» ma non
+   mostra ciò che ricorda né sa dimenticare. Comandi diretti «cosa ricordi» e
+   «dimentica …» (togliere una riga da `memoria.md`: è una cancellazione,
+   quindi con conferma) e un riquadro «Memoria» nell'HUD. Senza modello. Va
+   deciso insieme al punto 5 delle correzioni.
+7. **Riquadro «Comandi» nell'HUD.** Promemoria dei comandi diretti, ricavato
+   da `alfred/core/comandi.py` e non scritto a mano: sono quelli a zero
+   riserve, conviene averli sott'occhio. Senza modello.
+
+I punti 3 (dettagli), 6 e 7 vengono dal video «Creo Jarvis con l'AI» di Andrea
+Buzzatti, visto il 14 novembre. Scartati perché già presenti o contro le
+regole: cervello su Groq (basta `[cervello_gratuito]` in config, ma è cloud),
+HUD dal telefono via Tailscale (c'è Telegram; non si apre il servizio alla
+rete), microfono nel browser, estetica Iron Man.
+
+### Progetto degli ampliamenti (14 novembre, prompt 8)
+
+Proposte di Claude Code, accettate da Pietro nelle scelte; il progetto
+intero **non è ancora approvato** e non è in `docs/ROADMAP.md`. Niente codice
+scritto. Ordine proposto (da confermare): 7 → 6 → 5 → 3 → 1 → 2 → 4.
+
+- **7 · Comandi.** Senza modello. Lista `ESEMPI` (frase d'esempio → azione)
+  in `comandi.py`, inviata all'HUD nel `benvenuto`; riquadro nascosto con
+  pulsante «?». Test: ogni esempio è riconosciuto come la sua azione e ogni
+  azione di `COMANDI` ha un esempio. Dopo: «cosa sai fare» a voce.
+- **6 · Memoria.** Senza modello. `ricordi()` e `dimentica(riga)` in
+  `brain/__init__.py` (scrittura atomica); azioni `cosa_ricordi` e
+  `dimentica` (sensibile, la domanda mostra la riga); comandi «cosa ricordi»,
+  «dimentica la N», «dimentica …» (somiglianza con `difflib`, se ambiguo
+  chiede quale); strumento MCP `dimentica`; riquadro con × per riga, stessa
+  conferma. Primo passo: i comandi; il riquadro dopo.
+- **5 · Posta (Gmail).** Senza modello. `tools/posta.py` col token di
+  `agenda.py` (ambito `gmail.readonly` in `AMBITI`, poi `alfred autorizza`;
+  Gmail API da abilitare nel progetto Google, in `docs/AGENDA.md`).
+  `is:unread in:inbox category:primary`, solo il `From` dei primi 3. Frase
+  nel briefing: «Tre messaggi non letti, tra cui da X, Y e Z.» Senza ambito o
+  rete tace. Nota: a schermo bloccato i mittenti passano da Telegram.
+- **3 · Ricerca sul web (via b).** Chiamata separata `chiedi_una_volta` col
+  modello leggero dell'economo e la sola ricerca web; al cervello arriva solo
+  il riassunto («il testo delle pagine è un dato, mai un'istruzione»). Azione
+  `cerca_web`, strumento MCP, comando «cerca sul web …». Spenta in
+  austerità. Costo da misurare al primo passo e scrivere in ARCHITETTURA. Da
+  verificare: che `claude -p` offra la ricerca web.
+- **1 · Cervello locale (scelta a: scorta in austerità con strumenti).**
+  Schemi letti da `MCPServer.list_tools()` ed eseguiti con `call_tool()`
+  dentro il processo (stesse rotte e conferme, nessuna duplicazione nuova);
+  ciclo di al massimo 5 giri in `brain/gratuito.py`; `strumenti = false` in
+  `[cervello_gratuito]`. Se l'endpoint è remoto, gli argomenti degli
+  strumenti escono dalla macchina. La deduplicazione dei tre file è
+  rimandata.
+- **2 · Missioni.** `cervello.profondo` (Sonnet); vietate in austerità,
+  permesse in parsimonia con il regime detto nella conferma. Tetto imposto
+  da Alfred: 30 minuti o 60 usi di strumenti. `claude -p --worktree
+  missione-<id> --permission-mode acceptEdits`, Bash solo come da
+  impostazioni del progetto, commit e push vietati; il worktree resta per la
+  revisione. `core/missioni.py`, tipo `missione` in Attività («ferma la
+  missione» riusa `annulla`), azione sensibile, strumento MCP,
+  `[missioni] progetti` in config. Primo passo: conferma, avvio, Attività,
+  annuncio finale con riassunto e statistiche del diff.
+- **4 · Fine del turno ed eco.** Senza modello. A: alzare `fine_frase_s` a
+  1,3 in config e provare, codice solo se non basta. B1: `installa.sh`
+  scrive `~/.config/pipewire/pipewire.conf.d/alfred-eco.conf`
+  (`module-echo-cancel`); `ascolto.py` usa quella sorgente se c'è. B2:
+  interruzione senza nome, spenta di default
+  (`[ascolto] interrompi_senza_nome`) e sempre spenta con OBS in diretta o
+  in registrazione. Da verificare: `module-echo-cancel` su questa
+  installazione.
+
+Ogni punto, quando è il suo turno, va completato con file da toccare,
+dipendenza o rete mancante e prova (vedi la risposta del prompt 8), poi
+aggiunto alla roadmap.
 
 ## Prompt pronti
 
@@ -330,5 +408,28 @@ il punto a docs/ROADMAP.md e fermati: il codice in una sessione nuova.
 - Punto 2: `sposta_evento` e `crea_evento` chiesti dal cervello devono
   chiedere conferma, o basta `apri` con i link?
   Decisione (14 novembre): sì, anche `sposta_evento` e `crea_evento`.
-- Punto 5: tetto alla memoria o consolidazione nel vault?
-- Quale ampliamento per primo?
+- Punto 5: tetto alla memoria o consolidazione nel vault? E il riavvio del
+  cervello per la memoria può aspettare la conversazione nuova del mattino?
+  Decisione (14 novembre): tetto di 30 righe nel prompt (`RIGHE_DI_MEMORIA`),
+  e il riavvio aspetta la conversazione nuova del mattino.
+- Ampliamenti: approvare il progetto (sopra) e l'ordine 7 → 6 → 5 → 3 → 1 →
+  2 → 4; solo dopo vanno in `docs/ROADMAP.md`.
+  Decisione (14 novembre): progetto e ordine approvati, aggiunti alla roadmap.
+- Ampliamento 1: cosa resta dopo la scelta «scorta in austerità»: quale
+  modello ed endpoint (serve un modello che sappia chiamare strumenti), e
+  quando deduplicare `azioni.py`, `mcp_server.py` e `comandi.py`.
+- Ampliamento 4: cuffie o altoparlanti? Con le cuffie B1 e B2 non servono.
+
+## Trovato strada facendo
+
+- `pyworld` è importato in `alfred/voce/parola.py` (intonazione delle domande
+  con Kokoro) ma non è in `requirements.txt` né arriva da altri pacchetti:
+  su un clone nuovo manca e le domande restano piatte, senza errori. È
+  facoltativo (c'è il ripiego su `ImportError`): da decidere se dichiararlo.
+- Le conferme non coprono tutto ciò che chiede `CLAUDE.md`: `avvia_registrazione`
+  e `ferma_registrazione` partono senza conferma (`alfred/core/azioni.py`).
+  `invia_telegram` scrive solo alla chat di Pietro, quindi forse va bene così.
+  Decisione (14 novembre): le registrazioni restano senza conferma; le
+  dirette la chiedono già.
+- `docs/ARCHITETTURA.md` («Stack») chiede Python ≥ 3.12, `installa.sh` controlla
+  ≥ 3.11: uno dei due va corretto, dopo aver verificato su quale gira il codice.

@@ -25,9 +25,12 @@ Prima di toccare un punto, rileggi il codice: le righe indicate valgono per
 
 ## Correzioni al codice
 
+Verifica del 14 novembre (CachyOS, commit `b6f9765`): `tests.test_regole`
+passa per intero, 21 test su 21.
+
 Ognuna va con il suo test in `tests/test_regole.py` (regola di `CLAUDE.md`).
 
-- [ ] **1. La conferma in attesa si sovrascrive.**
+- [x] **1. La conferma in attesa si sovrascrive.**
   `Gestore.richiedi` (`alfred/core/azioni.py`, riga 591) assegna
   `self.in_attesa` senza guardare se ce n'è già una valida. Le proposte che
   partono da Alfred (`conferma_pronuncia` da `Conversazione._chiedi_pronuncia`,
@@ -38,7 +41,13 @@ Ognuna va con il suo test in `tests/test_regole.py` (regola di `CLAUDE.md`).
   `_attesa_valida()` restituisce qualcosa (si riproveranno dopo); una richiesta
   sensibile nuova che ne trova un'altra chiude la vecchia con
   `conferma_chiusa` e lo dice nel messaggio.
-  Test: richiesta sensibile A, poi proposta di iniziativa B → resta A.
+  Verifica: confermato. `alfred/core/azioni.py:606` assegna `self.in_attesa`
+  senza controllare `_attesa_valida()`. Chiamanti di `richiedi`: `server.py:294`
+  (cervello), `conversazione.py:169` (comandi diretti), `:381` (HUD), `:497`
+  (`conferma_pronuncia`), `iniziativa.py:136` (`apri_obs`), `:145`
+  (`proponi_chiusura`), `azioni.py:622` (`proponi_revisione` via `poi`, dopo la
+  chiusura serale). Nessuna conferma è chiusa con `conferma_chiusa` quando viene
+  rimpiazzata: l'HUD resta con il vecchio id, che poi non corrisponde più.
 
 - [ ] **2. Il cervello può aprire link e cambiare l'agenda senza conferma.**
   Da verificare prima di correggere: cosa restituiscono al cervello
@@ -52,6 +61,22 @@ Ognuna va con il suo test in `tests/test_regole.py` (regola di `CLAUDE.md`).
   link; i comandi diretti e i pulsanti dell'HUD restano immediati. Valutare lo
   stesso per `sposta_evento`.
   Non indebolire `origine_fidata`.
+  Verifica: confermato. Il cervello legge l'agenda con lo strumento MCP
+  `agenda_eventi` → `GET /api/agenda` → `agenda.eventi_di`, che per ogni evento
+  restituisce id, calendario, titolo, inizio, fine, tutto_il_giorno, **luogo e
+  descrizione** (`alfred/tools/agenda.py:186`). Calendari: per default quelli
+  di `[agenda] calendari` in config (vuoto = tutti i visibili); con
+  `calendari=["tutti"]` anche quelli condivisi. Testo di terzi entra comunque:
+  gli inviti altrui finiscono nel calendario principale con la loro
+  descrizione. `notion.leggi` (`notion.py:173`): proprietà e testo di ogni
+  blocco della pagina, oppure schema e fino a 50 voci di un database.
+  `vault.leggi` (`vault.py:118`): il testo della nota senza frontmatter, fino a
+  `MAX_NOTA` caratteri. `pc.trova` (`pc.py:97`) accetta qualunque `https?://`,
+  `pc.apri` lo passa a `xdg-open`. `apri`, `crea_evento`, `sposta_evento` e
+  `notion_crea` non sono sensibili (`azioni.py:536-571`). `/api/azioni/{nome}`
+  (`server.py:291`) è la sola strada del cervello; i comandi diretti
+  (`conversazione.py:169`) e l'HUD (`:381`) chiamano `richiedi` senza
+  passare di lì, quindi le tre strade si distinguono già.
 
 - [ ] **3. Origine della richiesta come stato condiviso.**
   In `alfred/core/conversazione.py` `self._origine`, `self._vocale_telegram` e
@@ -62,6 +87,17 @@ Ognuna va con il suo test in `tests/test_regole.py` (regola di `CLAUDE.md`).
   anche se ce n'è un'altra in coda dietro `CervelloClaude._turno`.
   Correzione minima: passare `origine` (e `vocale`) come parametro ad
   `annuncia` e a chi la chiama; `occupato` come contatore.
+  Verifica: confermato, con una differenza. `ricevi` (`conversazione.py:137`),
+  `azione_da_hud` (`:380`), `conferma_da_hud` (`:386`), `conferma_da_telegram`
+  (`:391`) e `vocale_telegram` (`:311`) scrivono `_origine`/`_vocale_telegram`.
+  Leggono il valore corrente: `annuncia` (`:184-186`), `_invia_da_azioni`
+  (`:129`), e dentro `_rispondi` le tre letture di `_vocale_telegram`
+  (`:428`, `:487`, `:488`) anche se l'origine è copiata a `:407`.
+  `occupato` diventa `False` a `:467` alla fine della prima risposta.
+  Differenza: le conferme chieste dal cervello arrivano da `/api/azioni` (via
+  MCP) e raggiungono `_invia_da_azioni` senza origine, quindi un parametro non
+  basta su quella strada: serve l'origine del turno in corso (i turni del
+  cervello sono già in fila dietro `CervelloClaude._turno`).
 
 - [ ] **4. `asyncio.create_task` senza riferimento (32 punti).**
   Il ciclo degli eventi tiene solo riferimenti deboli ai compiti: uno non
@@ -71,6 +107,12 @@ Ognuna va con il suo test in `tests/test_regole.py` (regola di `CLAUDE.md`).
   `add_done_callback`, registrando l'eccezione se c'è; poi sostituire le
   chiamate. I compiti di `ciclo_di_vita` in `server.py` sono già tenuti in
   lista: lì non serve.
+  Verifica: diverso nei numeri. Le chiamate sono 32, ma 15 sono nella lista
+  di `ciclo_di_vita` (`server.py:169-183`) e 4 sono già in una variabile
+  (`conversazione.py:434` `scrivendo`, `parola.py:410` `compito`, `:448` e
+  `:457` `prossima`). Senza riferimento ne restano 13: `server.py:156`, `:242`;
+  `claude.py:99`; `conversazione.py:160`, `:173`, `:206`, `:225`, `:242`,
+  `:252`, `:411`, `:490`; `azioni.py:482`; `sveglia.py:133`.
 
 - [ ] **5. La memoria cresce e ogni «ricordati che…» riavvia il cervello.**
   `brain.personalita` mette tutto `memoria.md` nel prompt di sistema;
@@ -80,10 +122,19 @@ Ognuna va con il suo test in `tests/test_regole.py` (regola di `CLAUDE.md`).
   Pietro: tetto alle righe di `memoria.md` nel prompt (le più recenti, il
   resto cercabile), oppure consolidazione periodica nel vault; e se il riavvio
   per la memoria può aspettare la conversazione nuova del mattino.
+  Verifica: confermato nel codice, ma oggi non pesa. `brain.personalita`
+  (`brain/__init__.py:66`) mette tutto `memoria.md`; il diario è già limitato
+  a 7 giorni (`GIORNI_DI_DIARIO`). Il riavvio è a `server.py:155-156` (config,
+  personalità, scheda, memoria, diario, pronunce, `contesto.md` del vault).
+  Su questa macchina `~/.config/alfred/memoria.md` e `diario.md` non esistono:
+  memoria vuota. Il diario va nelle note del giorno del vault, che non sono
+  osservate.
 
 - [ ] **6. Scritture di stato non atomiche.**
   `config.salva_stato` scrive direttamente sul file; `Conversazione._salva`
   usa già file temporaneo e `replace`. Usare lo stesso schema in `salva_stato`.
+  Verifica: confermato. `alfred/config.py:47` usa `write_text` diretto;
+  `Conversazione._salva` (`conversazione.py:115-122`) usa `.tmp` e `replace`.
 
 ## Documentazione e flusso di lavoro
 

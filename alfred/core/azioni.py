@@ -576,6 +576,10 @@ AZIONI = {a.nome: a for a in [
 ]}
 
 
+# Domande che Alfred fa da sé: non scavalcano una conferma già in sospeso.
+PROPOSTE_DI_INIZIATIVA = {"conferma_pronuncia", "proponi_chiusura", "proponi_revisione"}
+
+
 class Gestore:
     """Esegue le azioni e custodisce quella in attesa di conferma."""
 
@@ -594,6 +598,10 @@ class Gestore:
         if not azione:
             return {"ok": False, "messaggio": f"Non conosco l'azione «{nome}», signore."}
         parametri = parametri or {}
+        precedente = self._attesa_valida() if azione.sensibile else None
+        if precedente and nome in PROPOSTE_DI_INIZIATIVA:
+            # Il «sì» deve andare alla domanda a cui crede di rispondere: si riproverà dopo.
+            return {"ok": False, "azione": nome, "rimandata": True, "messaggio": "C'è già una domanda in sospeso."}
         if azione.sensibile:
             if isinstance(azione.domanda, str):
                 domanda = azione.domanda
@@ -603,11 +611,16 @@ class Gestore:
                 except Exception as errore:
                     log.warning("conferma di %s non preparata: %s", nome, errore)
                     return {"ok": False, "azione": nome, "messaggio": f"Non riesco a trovare ciò che mi chiede, signore: {errore}."}
+            if precedente:
+                await self._invia({"tipo": "conferma_chiusa", "id": precedente["id"]})
+                domanda_vecchia = precedente["domanda"]
             self.in_attesa = {
                 "id": uuid.uuid4().hex[:8], "nome": nome, "parametri": parametri,
                 "domanda": domanda, "scadenza": time.time() + SCADENZA_CONFERMA_S,
             }
             await self._invia({"tipo": "conferma", "id": self.in_attesa["id"], "domanda": domanda})
+            if precedente:
+                domanda = f"Lascio cadere la domanda di prima («{domanda_vecchia}»). {domanda}"
             return {"ok": True, "azione": nome, "in_attesa_di_conferma": True, "messaggio": domanda}
         return await self._esegui(azione, parametri)
 

@@ -402,6 +402,31 @@ def test_routine():
                 pass
 
 
+def test_una_conferma_alla_volta():
+    """Una proposta di Alfred non scavalca una conferma in sospeso; una richiesta
+    sensibile nuova chiude la vecchia e lo dice."""
+    import asyncio
+
+    inviati = []
+
+    async def invia(m):
+        inviati.append(m)
+
+    async def prova():
+        g = azioni.Gestore(invia)
+        await g.richiedi("avvia_diretta")
+        a = g.in_attesa
+        esito = await g.richiedi("proponi_chiusura")
+        assert esito["rimandata"] and g.in_attesa is a  # resta A
+        esito = await g.richiedi("ferma_diretta")
+        assert g.in_attesa["nome"] == "ferma_diretta"  # resta C
+        assert {"tipo": "conferma_chiusa", "id": a["id"]} in inviati  # A chiusa
+        assert "Lascio cadere" in esito["messaggio"] and a["domanda"] in esito["messaggio"]
+        assert g.in_attesa["domanda"] == azioni.AZIONI["ferma_diretta"].domanda  # sull'HUD solo la domanda nuova
+
+    asyncio.run(prova())
+
+
 if __name__ == "__main__":
     for nome, prova in list(globals().items()):
         if nome.startswith("test_"):

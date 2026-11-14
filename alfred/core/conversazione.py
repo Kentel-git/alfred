@@ -495,6 +495,9 @@ class Conversazione:
         if discorso:
             await discorso.compito  # prima finisce la risposta
         esito = await self.azioni.richiedi("conferma_pronuncia", {"parole": [nuova], "inglese": True})
+        if esito.get("rimandata"):
+            self._pronunce_chieste.discard(nuova.lower())  # la chiederà la prossima volta che la dice
+            return
         grafia = parola.pronuncia(nuova)
         self._da_riferire = [*self._da_riferire, f"hai chiesto a {self.cervello.appellativo} se la tua pronuncia "
                              f"di «{nuova}» (grafia «{grafia}») va bene"][-10:]

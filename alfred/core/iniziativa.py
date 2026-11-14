@@ -141,6 +141,7 @@ class Iniziativa:
             config.salva_stato("iniziativa.json", briefing=oggi)
             await self.conversazione.nuovo_giorno(adesso)
         elif not bloccato and da_proporre_chiusura(adesso, stato, config.leggi_stato(routine.FILE)):
-            config.salva_stato("iniziativa.json", chiusura_proposta=oggi)
             esito = await self.conversazione.azioni.richiedi("proponi_chiusura")
-            await self.conversazione.di_sua_iniziativa(esito["messaggio"], bloccato)
+            if not esito.get("rimandata"):  # rimandata: c'è un'altra domanda, si riprova al prossimo giro
+                config.salva_stato("iniziativa.json", chiusura_proposta=oggi)
+                await self.conversazione.di_sua_iniziativa(esito["messaggio"], bloccato)

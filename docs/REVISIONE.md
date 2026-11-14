@@ -419,6 +419,7 @@ il punto a docs/ROADMAP.md e fermati: il codice in una sessione nuova.
   modello ed endpoint (serve un modello che sappia chiamare strumenti), e
   quando deduplicare `azioni.py`, `mcp_server.py` e `comandi.py`.
 - Ampliamento 4: cuffie o altoparlanti? Con le cuffie B1 e B2 non servono.
+  Decisione (14 novembre): altoparlanti, quindi servono A, B1 e B2.
 
 ## Trovato strada facendo
 
@@ -434,3 +435,6 @@ il punto a docs/ROADMAP.md e fermati: il codice in una sessione nuova.
   dirette la chiedono già.
 - `docs/ARCHITETTURA.md` («Stack») chiede Python ≥ 3.12, `installa.sh` controlla
   ≥ 3.11: uno dei due va corretto, dopo aver verificato su quale gira il codice.
+  Fatto (14 novembre): il codice compila su 3.11 e 3.12, ma `av`, `scipy` e
+  `networkx` recenti vogliono ≥ 3.12; `installa.sh` ora chiede 3.12. Gira su
+  3.14; `pocket-tts` 4.0.1 dichiara < 3.15, da ricontrollare al passaggio.

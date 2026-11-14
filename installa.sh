@@ -14,7 +14,7 @@ errore() { printf '\033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 
 # --- Requisiti ---------------------------------------------------------------
 command -v python3 >/dev/null || errore "Serve python3."
-python3 -c 'import sys; sys.exit(sys.version_info < (3, 11))' || errore "Serve Python 3.11 o più recente."
+python3 -c 'import sys; sys.exit(sys.version_info < (3, 12))' || errore "Serve Python 3.12 o più recente."
 python3 - <<'EOF' 2>/dev/null || errore "Mancano PyGObject e WebKitGTK 4.1.
   Arch/CachyOS:   sudo pacman -S python-gobject webkit2gtk-4.1
   Debian/Ubuntu:  sudo apt install python3-gi gir1.2-webkit2-4.1

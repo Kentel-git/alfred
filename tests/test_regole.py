@@ -227,6 +227,57 @@ def test_cervello_gratuito_spento_o_assente():
             assert asyncio.run(gratuito.chiedi([{"role": "user", "content": "ciao"}], "sistema")) is None, url
 
 
+def test_cervello_gratuito_con_strumenti():
+    """In austerità il cervello gratuito chiama i suoi pochi strumenti (dentro il processo,
+    per le stesse rotte del cervello Claude), riceve l'esito e risponde; al più 5 giri."""
+    import asyncio
+    import json
+
+    import httpx
+
+    from alfred import config, mcp_server
+    from alfred.brain import gratuito
+
+    richieste, azioni_fatte = [], []
+    vero_client = httpx.AsyncClient
+
+    def endpoint(insistente: bool):
+        def risposta(richiesta: httpx.Request) -> httpx.Response:
+            corpo = json.loads(richiesta.content)
+            richieste.append(corpo)
+            if "tools" in corpo and (insistente or corpo["messages"][-1]["role"] != "tool"):
+                chiamata = {"id": f"c{len(richieste)}", "type": "function",
+                            "function": {"name": "volume", "arguments": '{"azione": "imposta", "livello": 30}'}}
+                return httpx.Response(200, json={"choices": [{"message": {"role": "assistant", "tool_calls": [chiamata]}}]})
+            return httpx.Response(200, json={"choices": [{"message": {"role": "assistant", "content": "Fatto, signore."}}]})
+        return lambda **kw: vero_client(transport=httpx.MockTransport(risposta), **kw)
+
+    async def azione(nome, parametri=None):
+        azioni_fatte.append((nome, parametri))
+        return {"ok": True, "messaggio": "Volume al 30 per cento, signore."}
+
+    cfg = config.PREDEFINITI | {"cervello_gratuito": {"url": "http://finto/v1", "modello": "m",
+                                                      "attesa_massima": 2, "strumenti": True}}
+    with mock.patch.object(config, "carica", return_value=cfg), mock.patch.object(mcp_server, "_azione", azione):
+        with mock.patch.object(gratuito.httpx, "AsyncClient", endpoint(insistente=False)):
+            testo = asyncio.run(gratuito.chiedi([{"role": "user", "content": "volume al 30"}], "s", strumenti=True))
+        assert testo == "Fatto, signore." and azioni_fatte == [("volume", {"azione": "imposta", "livello": 30})]
+        nomi = {s["function"]["name"] for s in richieste[0]["tools"]}
+        assert nomi == set(gratuito.STRUMENTI_IN_AUSTERITA)  # solo il sottoinsieme, e tutti esistono
+        assert "Volume al 30" in richieste[1]["messages"][-1]["content"]  # l'esito torna al modello
+
+        richieste.clear()
+        with mock.patch.object(gratuito.httpx, "AsyncClient", endpoint(insistente=True)):
+            testo = asyncio.run(gratuito.chiedi([{"role": "user", "content": "x"}], "s", strumenti=True))
+        assert testo == "Fatto, signore." and len(richieste) == gratuito.GIRI_MASSIMI + 1
+        assert "tools" not in richieste[-1]  # l'ultimo giro risponde senza strumenti
+
+        richieste.clear()  # il diario non usa strumenti
+        with mock.patch.object(gratuito.httpx, "AsyncClient", endpoint(insistente=True)):
+            asyncio.run(gratuito.chiedi([{"role": "user", "content": "x"}], "s"))
+        assert "tools" not in richieste[0]
+
+
 def test_notion_testo_e_proprieta():
     from alfred.tools.notion import _riga, blocchi, valori_per_notion
 

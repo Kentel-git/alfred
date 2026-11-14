@@ -33,11 +33,15 @@ profondo = "sonnet"
 [cervello_gratuito]
 # Facoltativo: un endpoint compatibile con le API OpenAI (es. FreeLLMAPI,
 # Ollama, llama.cpp). Scrive il diario di fine giornata e risponde in
-# austerità al posto di Claude, senza strumenti. Vuoto = spento.
+# austerità al posto di Claude, con pochi strumenti (meteo, agenda, apri,
+# volume, timer, cattura, attività). Vuoto = spento.
 # La chiave, se serve, va in secrets.env: ALFRED_GRATUITO_CHIAVE=...
+# Se l'endpoint non è sulla macchina (FreeLLMAPI smista verso servizi cloud),
+# anche gli esiti degli strumenti (eventi, note) escono dalla macchina.
 url = ""                 # es. "http://127.0.0.1:3001/v1"
-modello = "auto"
+modello = "auto"         # con gli strumenti serve un modello che li sappia chiamare, es. "gpt-oss-120b"
 attesa_massima = 60      # secondi
+strumenti = true         # false: in austerità solo chiacchiera
 
 [economia]
 # Le riserve (limiti dell'abbonamento Claude) sono condivise con tutto il resto

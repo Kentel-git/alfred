@@ -418,6 +418,9 @@ il punto a docs/ROADMAP.md e fermati: il codice in una sessione nuova.
 - Ampliamento 1: cosa resta dopo la scelta «scorta in austerità»: quale
   modello ed endpoint (serve un modello che sappia chiamare strumenti), e
   quando deduplicare `azioni.py`, `mcp_server.py` e `comandi.py`.
+  Decisione (14 novembre): FreeLLMAPI con modello fisso (`gpt-oss-120b`, il
+  più pronto nella prova; `gemini-flash` era in limite di richieste),
+  sottoinsieme di 9 strumenti, deduplicazione rimandata. Primo passo fatto.
 - Ampliamento 4: cuffie o altoparlanti? Con le cuffie B1 e B2 non servono.
   Decisione (14 novembre): altoparlanti, quindi servono A, B1 e B2.
 

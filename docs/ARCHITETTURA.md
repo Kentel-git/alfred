@@ -134,8 +134,14 @@ quotidiano) oltre metà settimana o se il consumo corre più del calendario;
 **austerità** (nessun modello, salvo "è importante") oltre l'80% della
 settimana o il 90% della sessione. Soglie in `[economia]` di `config.toml`.
 In austerità, se in `[cervello_gratuito]` c'è un endpoint compatibile OpenAI
-(es. FreeLLMAPI, Ollama), risponde quello, senza strumenti e con gli ultimi
-messaggi (`alfred/brain/gratuito.py`); se non risponde, la frase fissa di sempre.
+(es. FreeLLMAPI, Ollama), risponde quello con gli ultimi messaggi
+(`alfred/brain/gratuito.py`); se non risponde, la frase fissa di sempre. Ha
+pochi strumenti (`STRUMENTI_IN_AUSTERITA`: meteo, agenda, apri, volume, timer,
+cattura, attività di oggi), presi dal server MCP ed eseguiti dentro il
+processo: passano da `/api/azioni` come quelli di Claude e chiedono le stesse
+conferme. Al più 5 giri di strumenti, poi risponde. Serve un modello che sappia
+chiamare strumenti; `strumenti = false` li spegne. Con un endpoint non locale
+anche gli esiti degli strumenti escono dalla macchina.
 Regola di progetto: ogni nuova funzione deve dichiarare quale modello usa, e
 preferire sempre la soluzione senza modello quando basta.
 

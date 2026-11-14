@@ -66,6 +66,6 @@ Ampliamenti approvati il 14 novembre, in quest'ordine (progetto in
 - [ ] memoria visibile e cancellabile: «cosa ricordi», «dimentica …» con conferma, riquadro nell'HUD (senza modello)
 - [ ] posta Gmail in sola lettura nel briefing: non letti e mittenti (senza modello)
 - [ ] ricerca sul web in sola lettura, con il modello leggero dell'economo; spenta in austerità
-- [ ] cervello locale con strumenti come scorta in austerità (chiude «cervello locale alternativo»)
+- [x] cervello di scorta con strumenti in austerità: FreeLLMAPI con `gpt-oss-120b`, 9 strumenti, al più 5 giri (Ollama resta possibile cambiando `url`, non provato)
 - [ ] missioni Claude Code: «Alfred, lavora su X» in un worktree, con conferma e tetto
 - [ ] fine del turno e cancellazione dell'eco (vedi Fase 3)
